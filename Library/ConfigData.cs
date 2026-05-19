@@ -109,6 +109,12 @@ namespace OmenMon.Library {
         // Whether to use the Embedded Controller instead of a BIOS call to set the fan level
         public static bool FanLevelUseEc = false;
 
+        // Whether to periodically re-apply the constant fan levels to bypass BIOS override
+        public static bool FanConstReapplyEnabled = false;
+
+        // How often to re-apply the constant fan levels [s]
+        public static int FanConstReapplyInterval = 5;
+
         // Fan modes that should always be placed on top of the list
         // (the rest are legacy modes, irrelevant but kept for completeness)
         public static List<string> FanModesSticky = new List<string> { "Default", "Performance", "Cool" };

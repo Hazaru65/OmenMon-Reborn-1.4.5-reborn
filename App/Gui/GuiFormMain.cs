@@ -584,6 +584,14 @@ namespace OmenMon.AppGui {
 
         }
 
+        // Handles the event when the fan constant speed re-apply checkbox is toggled
+        private void EventFanConstReapplyChanged(object sender, EventArgs e) {
+
+            Config.FanConstReapplyEnabled = this.ChkFanConstReapply.Checked;
+            Config.Save();
+
+        }
+
         // Handles the event when the fan radio button has been selected or deselected
         private void EventFanTrkChanged(object sender, EventArgs e) {
 
@@ -826,6 +834,9 @@ namespace OmenMon.AppGui {
         // Updates the fan group controls section
         public void UpdateFanCtl() {
 
+            // Update the reapply checkbox state
+            this.ChkFanConstReapply.Checked = Config.FanConstReapplyEnabled;
+
             // Query and retrieve fan control state
             bool isFanMax = Context.Op.Platform.Fans.GetMax();
             bool isFanOff = Context.Op.Platform.Fans.GetOff();
@@ -1024,7 +1035,17 @@ namespace OmenMon.AppGui {
 
         }
 #endregion
- 
+
+        // Properties and methods exposed for the constant speed re-apply feature
+        public bool IsConstMode => this.RdoFanConst.Checked;
+
+        public byte[] GetConstLevels() {
+            return new byte[] {
+                this.TrkFan0Lvl.Value == this.TrkFan0Lvl.Minimum ? (byte) 0 : (byte) this.TrkFan0Lvl.Value,
+                this.TrkFan1Lvl.Value == this.TrkFan1Lvl.Minimum ? (byte) 0 : (byte) this.TrkFan1Lvl.Value
+            };
+        }
+
     }
 
 }

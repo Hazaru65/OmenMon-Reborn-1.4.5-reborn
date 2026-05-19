@@ -207,6 +207,12 @@ namespace OmenMon.Library {
                     if(GetBool(xml, XmlPrefix + "FanLevelUseEc", out flag))
                         FanLevelUseEc = flag;
 
+                    if(GetBool(xml, XmlPrefix + "FanConstReapplyEnabled", out flag))
+                        FanConstReapplyEnabled = flag;
+
+                    if(GetWord(xml, XmlPrefix + "FanConstReapplyInterval", out value))
+                        FanConstReapplyInterval = value;
+
                     FanProgramDefault =
                         GetString(xml, XmlPrefix + "FanProgramDefault");
 
@@ -612,6 +618,8 @@ namespace OmenMon.Library {
                     SetUInt(xml, XmlPrefix + "FanLevelMin", (uint) FanLevelMin);
                     SetBool(xml, XmlPrefix + "FanLevelNeedManual", FanLevelNeedManual);
                     SetBool(xml, XmlPrefix + "FanLevelUseEc", FanLevelUseEc);
+                    SetBool(xml, XmlPrefix + "FanConstReapplyEnabled", FanConstReapplyEnabled);
+                    SetUInt(xml, XmlPrefix + "FanConstReapplyInterval", (uint) FanConstReapplyInterval);
                     SetString(xml, XmlPrefix + "FanProgramDefault", FanProgramDefault);
                     SetString(xml, XmlPrefix + "FanProgramDefaultAlt", FanProgramDefaultAlt);
                     SetBool(xml, XmlPrefix + "FanProgramModeCheckFirst", FanProgramModeCheckFirst);

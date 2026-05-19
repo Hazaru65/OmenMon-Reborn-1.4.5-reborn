@@ -264,6 +264,7 @@ namespace OmenMon.Library.Locale {
                 ["GuiTipFanAuto"] = "Automatic mode (the default setting)",
                 ["GuiTipFanMode"] = "Choose a fan mode from the drop-down list",
                 ["GuiTipFanConst"] = "Constant speed mode" + Environment.NewLine + "Use trackbars to set each fan level",
+                ["GuiTipFanConstReapply"] = "Periodically re-apply constant fan speed settings" + Environment.NewLine + "to bypass HP BIOS manual speed override",
                 ["GuiTipFanMax"] = "Maximum speed mode" + Environment.NewLine + "Fans operate at maximum speed" + Environment.NewLine + "(5,500 and 5,700 rpm)",
                 ["GuiTipFanOff"] = "Fans off" + Environment.NewLine + "Power off the fans completely",
                 ["GuiTipFanSet"] = "Click to apply current settings" + Environment.NewLine + "Button is highlighted when settings have changed",

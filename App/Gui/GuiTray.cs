@@ -52,6 +52,7 @@ namespace OmenMon.AppGui {
         internal int UpdateIconTick;
         internal int UpdateMonitorTick;
         internal int UpdateProgramTick;
+        internal int UpdateFanConstReapplyTick;
 #endregion
 
 #region Construction & Disposal
@@ -319,6 +320,8 @@ namespace OmenMon.AppGui {
                 this.UpdateMonitorTick = 0;
             if(this.UpdateProgramTick >= Config.UpdateProgramInterval)
                 this.UpdateProgramTick = 0;
+            if(this.UpdateFanConstReapplyTick >= Config.FanConstReapplyInterval)
+                this.UpdateFanConstReapplyTick = 0;
 
             // Update the fan program or extend the countdown
             if(this.UpdateProgramTick++ == 0) {
@@ -339,6 +342,35 @@ namespace OmenMon.AppGui {
                 this.FormMain.UpdateFan();
                 this.FormMain.UpdateSys();
                 this.FormMain.UpdateTmp();
+            }
+
+            // Reapply constant fan speed settings if enabled and constant mode is active
+            if(Config.FanConstReapplyEnabled && this.FormMain != null && this.FormMain.IsConstMode) {
+                if(this.UpdateFanConstReapplyTick++ == 0) {
+                    try {
+                        byte[] levels = this.FormMain.GetConstLevels();
+                        bool isFanMax = this.Op.Platform.Fans.GetMax();
+                        bool isFanOff = this.Op.Platform.Fans.GetOff();
+
+                        if(levels[0] == 0 && levels[1] == 0) {
+                            if(!isFanOff)
+                                this.Op.Platform.Fans.SetOff(true);
+                        } else if(levels[0] == Config.FanLevelMax && levels[1] == Config.FanLevelMax) {
+                            if(!isFanMax)
+                                this.Op.Platform.Fans.SetMax(true);
+                        } else {
+                            if(isFanMax)
+                                this.Op.Platform.Fans.SetMax(false);
+                            if(isFanOff)
+                                this.Op.Platform.Fans.SetOff(false);
+
+                            this.Op.Platform.Fans.SetLevels(levels);
+                            this.Op.Platform.Fans.SetMode(this.Op.Platform.Fans.GetMode());
+                        }
+                    } catch { }
+                }
+            } else {
+                this.UpdateFanConstReapplyTick = 0;
             }
 
             // Update the notification icon and tray tooltip

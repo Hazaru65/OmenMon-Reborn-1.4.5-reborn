@@ -59,6 +59,7 @@ namespace OmenMon.AppGui {
         private ProgressBarEx BarFan1Rte;     // Fan #1 rate bar [%]
         private RadioButton RdoFanAuto;       // Fan auto setting radio button
         private RadioButton RdoFanConst;      // Fan constant setting radio button
+        private CheckBox ChkFanConstReapply;  // Fan constant speed re-apply checkbox
         private RadioButton RdoFanMax;        // Fan maximum setting radio button
         private RadioButton RdoFanOff;        // Fan off setting radio button
         private RadioButton RdoFanProg;       // Fan program setting radio button
@@ -138,6 +139,7 @@ namespace OmenMon.AppGui {
             this.PicKbd = new PictureBox();
             this.RdoFanAuto = new RadioButton();
             this.RdoFanConst = new RadioButton();
+            this.ChkFanConstReapply = new CheckBox();
             this.RdoFanMax = new RadioButton();
             this.RdoFanOff = new RadioButton();
             this.RdoFanProg = new RadioButton();
@@ -333,11 +335,18 @@ namespace OmenMon.AppGui {
             // Fan constant setting radio button
             this.RdoFanConst.Location = new Point(94, 153);
             this.RdoFanConst.Name = Gui.T_RDO + Gui.G_FAN + "Const";
-            this.RdoFanConst.Size = new Size(70, 21);
+            this.RdoFanConst.Size = new Size(52, 21);
             this.RdoFanConst.TabIndex = 18;
             this.RdoFanConst.Text = Config.Locale.Get(Config.L_GUI_MAIN + Gui.G_FAN + "Const");
             this.RdoFanConst.TextAlign = ContentAlignment.MiddleCenter;
             this.RdoFanConst.UseVisualStyleBackColor = true;
+
+            // Fan constant speed re-apply checkbox
+            this.ChkFanConstReapply.Location = new Point(146, 153);
+            this.ChkFanConstReapply.Name = Gui.T_CHK + Gui.G_FAN + "ConstReapply";
+            this.ChkFanConstReapply.Size = new Size(17, 21);
+            this.ChkFanConstReapply.TabIndex = 21;
+            this.ChkFanConstReapply.UseVisualStyleBackColor = true;
 
             // Fan off setting radio button
             this.RdoFanOff.Location = new Point(165, 153);
@@ -378,6 +387,7 @@ namespace OmenMon.AppGui {
             this.GrpFan.Controls.Add(this.LblFanUnitVal);
             this.GrpFan.Controls.Add(this.RdoFanAuto);
             this.GrpFan.Controls.Add(this.RdoFanConst);
+            this.GrpFan.Controls.Add(this.ChkFanConstReapply);
             this.GrpFan.Controls.Add(this.RdoFanMax);
             this.GrpFan.Controls.Add(this.RdoFanOff);
             this.GrpFan.Controls.Add(this.RdoFanProg);
@@ -696,6 +706,7 @@ namespace OmenMon.AppGui {
             this.Tip.SetToolTip(this.RdoFanAuto, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Auto"));
             this.Tip.SetToolTip(this.CmbFanMode, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Mode"));
             this.Tip.SetToolTip(this.RdoFanConst, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Const"));
+            this.Tip.SetToolTip(this.ChkFanConstReapply, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "ConstReapply"));
             this.Tip.SetToolTip(this.RdoFanMax, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Max"));
             this.Tip.SetToolTip(this.RdoFanOff, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Off"));
             this.Tip.SetToolTip(this.BtnFanSet, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Set"));
@@ -753,6 +764,7 @@ namespace OmenMon.AppGui {
             this.CmbFanMode.SelectionChangeCommitted += EventFanModeChanged;
             this.RdoFanAuto.CheckedChanged += EventFanRdoChanged;
             this.RdoFanConst.CheckedChanged += EventFanRdoChanged;
+            this.ChkFanConstReapply.CheckedChanged += EventFanConstReapplyChanged;
             this.RdoFanOff.CheckedChanged += EventFanRdoChanged;
             this.RdoFanMax.CheckedChanged += EventFanRdoChanged;
             this.RdoFanProg.CheckedChanged += EventFanRdoChanged;
