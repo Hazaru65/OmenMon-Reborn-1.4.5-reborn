@@ -457,6 +457,11 @@ namespace OmenMon.AppGui {
 
             }
 
+            // Save the reapply settings
+            Config.FanConstReapplyEnabled = this.ChkFanConstReapply.Checked;
+            Config.FanConstReapplyInterval = (int) this.NumFanConstReapplyInterval.Value;
+            Config.Save();
+
             // Restore the default button look
             this.BtnFanSet.Checked = false;
 
@@ -471,6 +476,11 @@ namespace OmenMon.AppGui {
             // Cancel the help cursor
             ((System.ComponentModel.CancelEventArgs) e).Cancel = true;
  
+        }
+
+        // Handles the about link being clicked
+        private void EventActionAbout(object sender, LinkLabelLinkClickedEventArgs e) {
+            GuiOp.About();
         }
 #endregion
 
@@ -587,8 +597,14 @@ namespace OmenMon.AppGui {
         // Handles the event when the fan constant speed re-apply checkbox is toggled
         private void EventFanConstReapplyChanged(object sender, EventArgs e) {
 
-            Config.FanConstReapplyEnabled = this.ChkFanConstReapply.Checked;
-            Config.Save();
+            this.BtnFanSet.Checked = true;
+
+        }
+
+        // Handles the event when the fan constant speed re-apply interval is changed
+        private void EventFanConstReapplyIntervalChanged(object sender, EventArgs e) {
+
+            this.BtnFanSet.Checked = true;
 
         }
 
@@ -836,6 +852,7 @@ namespace OmenMon.AppGui {
 
             // Update the reapply checkbox state
             this.ChkFanConstReapply.Checked = Config.FanConstReapplyEnabled;
+            this.NumFanConstReapplyInterval.Value = Config.FanConstReapplyInterval;
 
             // Query and retrieve fan control state
             bool isFanMax = Context.Op.Platform.Fans.GetMax();

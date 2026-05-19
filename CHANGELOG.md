@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.4.1-reborn] - 2026-05-19
+
+### Added
+
+- **Minimize button** to the main form title bar (`MinimizeBox = true`).
+- **"About OmenMon" LinkLabel** to the bottom-left of the main form, restoring easy mouse access to the About/Help dialog (since Windows Forms automatically hides the title bar `?` help button when the minimize box is enabled).
+- **Taskbar minimization behavior**: The minimize button shrinks the form to the taskbar for quick access, while the close (X) button continues to hide the form to the system tray in the background.
+
 ## [1.4.0-reborn] - 2026-05-17
 
 > **Security release + post-PawnIO regression sweep.** OmenMon no longer ships the WinRing0 kernel driver. The kernel-mode access layer has been replaced with [PawnIO](https://pawnio.eu/), whose Microsoft-signed, HVCI-compatible driver does not trigger Windows Defender warnings the way WinRing0 did. Functionality is preserved; the public `Ring0` API is unchanged so `Hardware/Ec.cs` and every other caller stayed put. This release also bundles the user-reported regressions and model-database additions surfaced in the first week of post-PawnIO field testing.

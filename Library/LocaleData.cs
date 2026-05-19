@@ -144,11 +144,13 @@ namespace OmenMon.Library.Locale {
                 ["GuiAboutTextErrorSuffix"] = "}",
 
                 // GUI: Main
+                ["GuiMainAbout"] = "About OmenMon",
                 ["GuiMainFan"] = "Fan Monitoring & Control",
                 ["GuiMainFan0"] = "CPU",
                 ["GuiMainFan1"] = "GPU",
                 ["GuiMainFanAuto"] = "Auto",
                 ["GuiMainFanConst"] = "Const",
+                ["GuiMainFanConstReapply"] = "Reapply",
                 ["GuiMainFanMax"] = "Max",
                 ["GuiMainFanProg"] = "Prog",
                 ["GuiMainFanProgSet"] = "Set Fan Program",
