@@ -1,0 +1,1 @@
+Her zaman claude.md'yi oku. ona göre ilerle. 

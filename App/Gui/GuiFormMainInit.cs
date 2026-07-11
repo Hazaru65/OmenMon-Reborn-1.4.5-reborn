@@ -65,6 +65,8 @@ namespace OmenMon.AppGui {
         private CheckBox ChkFanConstSafety; // Auto-Revert safety checkbox
         private NumericUpDown NumFanConstSafetyTemp; // Auto-Revert safety temp limit
         private Label LblFanConstSafetyUnit; // Auto-Revert safety temp unit
+        private Label LblFanConstReapplyInfo; // Reapply info symbol
+        private Label LblFanConstSafetyInfo;  // Auto-Revert info symbol
         private RadioButton RdoFanMax;        // Fan maximum setting radio button
         private RadioButton RdoFanOff;        // Fan off setting radio button
         private RadioButton RdoFanProg;       // Fan program setting radio button
@@ -151,6 +153,8 @@ namespace OmenMon.AppGui {
             this.ChkFanConstSafety = new CheckBox();
             this.NumFanConstSafetyTemp = new NumericUpDown();
             this.LblFanConstSafetyUnit = new Label();
+            this.LblFanConstReapplyInfo = new Label();
+            this.LblFanConstSafetyInfo = new Label();
             this.RdoFanMax = new RadioButton();
             this.RdoFanOff = new RadioButton();
             this.RdoFanProg = new RadioButton();
@@ -403,6 +407,24 @@ namespace OmenMon.AppGui {
             this.LblFanConstSafetyUnit.Text = "°C";
             this.LblFanConstSafetyUnit.TextAlign = ContentAlignment.MiddleLeft;
 
+            // Reapply Info Symbol
+            this.LblFanConstReapplyInfo.Location = new Point(155, 177);
+            this.LblFanConstReapplyInfo.Name = "LblFanConstReapplyInfo";
+            this.LblFanConstReapplyInfo.Size = new Size(20, 21);
+            this.LblFanConstReapplyInfo.TabIndex = 27;
+            this.LblFanConstReapplyInfo.Text = "ⓘ";
+            this.LblFanConstReapplyInfo.TextAlign = ContentAlignment.MiddleCenter;
+            this.LblFanConstReapplyInfo.ForeColor = Color.DodgerBlue;
+
+            // Safety Info Symbol
+            this.LblFanConstSafetyInfo.Location = new Point(210, 201);
+            this.LblFanConstSafetyInfo.Name = "LblFanConstSafetyInfo";
+            this.LblFanConstSafetyInfo.Size = new Size(20, 21);
+            this.LblFanConstSafetyInfo.TabIndex = 28;
+            this.LblFanConstSafetyInfo.Text = "ⓘ";
+            this.LblFanConstSafetyInfo.TextAlign = ContentAlignment.MiddleCenter;
+            this.LblFanConstSafetyInfo.ForeColor = Color.DodgerBlue;
+
             // Fan off setting radio button
             this.RdoFanOff.Location = new Point(165, 153);
             this.RdoFanOff.Name = Gui.T_RDO + Gui.G_FAN + "Off";
@@ -448,6 +470,8 @@ namespace OmenMon.AppGui {
             this.GrpFan.Controls.Add(this.ChkFanConstSafety);
             this.GrpFan.Controls.Add(this.NumFanConstSafetyTemp);
             this.GrpFan.Controls.Add(this.LblFanConstSafetyUnit);
+            this.GrpFan.Controls.Add(this.LblFanConstReapplyInfo);
+            this.GrpFan.Controls.Add(this.LblFanConstSafetyInfo);
             this.GrpFan.Controls.Add(this.RdoFanMax);
             this.GrpFan.Controls.Add(this.RdoFanOff);
             this.GrpFan.Controls.Add(this.RdoFanProg);
@@ -780,6 +804,8 @@ namespace OmenMon.AppGui {
             this.Tip.SetToolTip(this.RdoFanConst, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Const"));
             this.Tip.SetToolTip(this.ChkFanConstReapply, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "ConstReapply"));
             this.Tip.SetToolTip(this.NumFanConstReapplyInterval, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "ConstReapply"));
+            this.Tip.SetToolTip(this.LblFanConstReapplyInfo, "Reapplies the current fan speed continuously to prevent the system from overriding it.");
+            this.Tip.SetToolTip(this.LblFanConstSafetyInfo, "Automatically reverts the fan back to 'Auto' mode if the temperature exceeds this threshold to prevent overheating.");
             this.Tip.SetToolTip(this.RdoFanMax, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Max"));
             this.Tip.SetToolTip(this.RdoFanOff, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Off"));
             this.Tip.SetToolTip(this.BtnFanSet, Config.Locale.Get(Config.L_GUI_TIP + Gui.G_FAN + "Set"));
