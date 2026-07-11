@@ -62,6 +62,9 @@ namespace OmenMon.AppGui {
         private CheckBox ChkFanConstReapply;  // Fan constant speed re-apply checkbox
         private NumericUpDown NumFanConstReapplyInterval; // Fan constant speed re-apply interval numeric input
         private Label LblFanConstReapplySec;  // Fan constant speed re-apply interval unit label
+        private CheckBox ChkFanConstSafety; // Auto-Revert safety checkbox
+        private NumericUpDown NumFanConstSafetyTemp; // Auto-Revert safety temp limit
+        private Label LblFanConstSafetyUnit; // Auto-Revert safety temp unit
         private RadioButton RdoFanMax;        // Fan maximum setting radio button
         private RadioButton RdoFanOff;        // Fan off setting radio button
         private RadioButton RdoFanProg;       // Fan program setting radio button
@@ -145,6 +148,9 @@ namespace OmenMon.AppGui {
             this.ChkFanConstReapply = new CheckBox();
             this.NumFanConstReapplyInterval = new NumericUpDown();
             this.LblFanConstReapplySec = new Label();
+            this.ChkFanConstSafety = new CheckBox();
+            this.NumFanConstSafetyTemp = new NumericUpDown();
+            this.LblFanConstSafetyUnit = new Label();
             this.RdoFanMax = new RadioButton();
             this.RdoFanOff = new RadioButton();
             this.RdoFanProg = new RadioButton();
@@ -169,6 +175,7 @@ namespace OmenMon.AppGui {
             ((System.ComponentModel.ISupportInitialize) this.TrkFan0Lvl).BeginInit();
             ((System.ComponentModel.ISupportInitialize) this.TrkFan1Lvl).BeginInit();
             ((System.ComponentModel.ISupportInitialize) this.NumFanConstReapplyInterval).BeginInit();
+            ((System.ComponentModel.ISupportInitialize) this.NumFanConstSafetyTemp).BeginInit();
 #endregion
 
 #region Fan Group
@@ -269,7 +276,7 @@ namespace OmenMon.AppGui {
             this.TrkFan0Lvl.Minimum = Config.FanLevelMin;
             this.TrkFan0Lvl.Name = Gui.T_TRK + Gui.G_FAN + "0" + Gui.S_LVL;
             this.TrkFan0Lvl.Orientation = Orientation.Vertical;
-            this.TrkFan0Lvl.Size = new Size(34, 150);
+            this.TrkFan0Lvl.Size = new Size(34, 140);
             this.TrkFan0Lvl.TabIndex = 10;
             this.TrkFan0Lvl.TabStop = false;
             this.TrkFan0Lvl.TickFrequency = 5;
@@ -282,7 +289,7 @@ namespace OmenMon.AppGui {
             this.TrkFan1Lvl.Minimum = Config.FanLevelMin;
             this.TrkFan1Lvl.Name = Gui.T_TRK + Gui.G_FAN + "0" + Gui.S_LVL;
             this.TrkFan1Lvl.Orientation = Orientation.Vertical;
-            this.TrkFan1Lvl.Size = new Size(34, 150);
+            this.TrkFan1Lvl.Size = new Size(34, 140);
             this.TrkFan1Lvl.TabIndex = 11;
             this.TrkFan1Lvl.TabStop = false;
             this.TrkFan1Lvl.TickFrequency = 5;
@@ -349,7 +356,7 @@ namespace OmenMon.AppGui {
             this.RdoFanConst.UseVisualStyleBackColor = true;
 
             // Fan constant speed re-apply checkbox
-            this.ChkFanConstReapply.Location = new Point(94, 177);
+            this.ChkFanConstReapply.Location = new Point(8, 177);
             this.ChkFanConstReapply.Name = Gui.T_CHK + Gui.G_FAN + "ConstReapply";
             this.ChkFanConstReapply.Size = new Size(75, 21);
             this.ChkFanConstReapply.TabIndex = 21;
@@ -357,7 +364,7 @@ namespace OmenMon.AppGui {
             this.ChkFanConstReapply.UseVisualStyleBackColor = true;
 
             // Fan constant speed re-apply interval numeric input
-            this.NumFanConstReapplyInterval.Location = new Point(172, 177);
+            this.NumFanConstReapplyInterval.Location = new Point(85, 177);
             this.NumFanConstReapplyInterval.Name = "Num" + Gui.G_FAN + "ConstReapplyInterval";
             this.NumFanConstReapplyInterval.Size = new Size(42, 20);
             this.NumFanConstReapplyInterval.TabIndex = 22;
@@ -365,12 +372,36 @@ namespace OmenMon.AppGui {
             this.NumFanConstReapplyInterval.Maximum = 999;
 
             // Fan constant speed re-apply interval unit label
-            this.LblFanConstReapplySec.Location = new Point(216, 177);
+            this.LblFanConstReapplySec.Location = new Point(129, 177);
             this.LblFanConstReapplySec.Name = Gui.T_LBL + Gui.G_FAN + "ConstReapplySec";
             this.LblFanConstReapplySec.Size = new Size(20, 21);
             this.LblFanConstReapplySec.TabIndex = 23;
             this.LblFanConstReapplySec.Text = "s";
             this.LblFanConstReapplySec.TextAlign = ContentAlignment.MiddleLeft;
+
+            // Fan constant safety checkbox
+            this.ChkFanConstSafety.Location = new Point(8, 201);
+            this.ChkFanConstSafety.Name = Gui.T_CHK + Gui.G_FAN + "ConstSafety";
+            this.ChkFanConstSafety.Size = new Size(130, 21);
+            this.ChkFanConstSafety.TabIndex = 24;
+            this.ChkFanConstSafety.Text = "Auto-Revert to Auto at";
+            this.ChkFanConstSafety.UseVisualStyleBackColor = true;
+
+            // Fan constant safety temperature numeric input
+            this.NumFanConstSafetyTemp.Location = new Point(140, 201);
+            this.NumFanConstSafetyTemp.Name = "Num" + Gui.G_FAN + "ConstSafetyTemp";
+            this.NumFanConstSafetyTemp.Size = new Size(42, 20);
+            this.NumFanConstSafetyTemp.TabIndex = 25;
+            this.NumFanConstSafetyTemp.Minimum = 40;
+            this.NumFanConstSafetyTemp.Maximum = 105;
+
+            // Fan constant safety unit label
+            this.LblFanConstSafetyUnit.Location = new Point(184, 201);
+            this.LblFanConstSafetyUnit.Name = Gui.T_LBL + Gui.G_FAN + "ConstSafetyUnit";
+            this.LblFanConstSafetyUnit.Size = new Size(20, 21);
+            this.LblFanConstSafetyUnit.TabIndex = 26;
+            this.LblFanConstSafetyUnit.Text = "°C";
+            this.LblFanConstSafetyUnit.TextAlign = ContentAlignment.MiddleLeft;
 
             // Fan off setting radio button
             this.RdoFanOff.Location = new Point(165, 153);
@@ -414,6 +445,9 @@ namespace OmenMon.AppGui {
             this.GrpFan.Controls.Add(this.ChkFanConstReapply);
             this.GrpFan.Controls.Add(this.NumFanConstReapplyInterval);
             this.GrpFan.Controls.Add(this.LblFanConstReapplySec);
+            this.GrpFan.Controls.Add(this.ChkFanConstSafety);
+            this.GrpFan.Controls.Add(this.NumFanConstSafetyTemp);
+            this.GrpFan.Controls.Add(this.LblFanConstSafetyUnit);
             this.GrpFan.Controls.Add(this.RdoFanMax);
             this.GrpFan.Controls.Add(this.RdoFanOff);
             this.GrpFan.Controls.Add(this.RdoFanProg);
@@ -423,7 +457,7 @@ namespace OmenMon.AppGui {
             // Fan group settings
             this.GrpFan.Location = new Point(416, 68);
             this.GrpFan.Name = Gui.T_GRP + Gui.G_FAN;
-            this.GrpFan.Size = new Size(287, 205);
+            this.GrpFan.Size = new Size(287, 229);
             this.GrpFan.TabIndex = 3;
             this.GrpFan.TabStop = false;
             this.GrpFan.Text = Config.Locale.Get(Config.L_GUI_MAIN + Gui.G_FAN).Replace("&", "&&");
@@ -716,14 +750,14 @@ namespace OmenMon.AppGui {
             this.MaximizeBox = false;
             this.MinimizeBox = true;
             this.Name = Gui.T_FRM + "Main";
-            this.Size = new Size(725, 320);
+            this.Size = new Size(725, 344);
             this.SizeGripStyle = SizeGripStyle.Hide;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.Text = Config.Locale.Get(Config.L_GUI_MAIN + "Title");
 
             // Link to open About dialog
             this.LnkAbout.AutoSize = true;
-            this.LnkAbout.Location = new Point(10, 276);
+            this.LnkAbout.Location = new Point(10, 300);
             this.LnkAbout.Name = "LnkAbout";
             this.LnkAbout.Size = new Size(80, 13);
             this.LnkAbout.TabIndex = 4;
@@ -786,6 +820,7 @@ namespace OmenMon.AppGui {
             ((System.ComponentModel.ISupportInitialize) this.TrkFan0Lvl).EndInit();
             ((System.ComponentModel.ISupportInitialize) this.TrkFan1Lvl).EndInit();
             ((System.ComponentModel.ISupportInitialize) this.NumFanConstReapplyInterval).EndInit();
+            ((System.ComponentModel.ISupportInitialize) this.NumFanConstSafetyTemp).EndInit();
 
             // Resume the layout
             this.GrpFan.ResumeLayout(false);
@@ -806,6 +841,8 @@ namespace OmenMon.AppGui {
             this.RdoFanConst.CheckedChanged += EventFanRdoChanged;
             this.ChkFanConstReapply.CheckedChanged += EventFanConstReapplyChanged;
             this.NumFanConstReapplyInterval.ValueChanged += EventFanConstReapplyIntervalChanged;
+            this.ChkFanConstSafety.CheckedChanged += EventFanConstSafetyChanged;
+            this.NumFanConstSafetyTemp.ValueChanged += EventFanConstSafetyTempChanged;
             this.RdoFanOff.CheckedChanged += EventFanRdoChanged;
             this.RdoFanMax.CheckedChanged += EventFanRdoChanged;
             this.RdoFanProg.CheckedChanged += EventFanRdoChanged;

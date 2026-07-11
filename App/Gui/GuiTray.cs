@@ -376,10 +376,12 @@ namespace OmenMon.AppGui {
             // Update the notification icon and tray tooltip
             if(this.UpdateIconTick++ == 0) {
 
+                bool needsSafetyCheck = Config.FanConstSafetyEnabled && this.FormMain != null && this.FormMain.IsConstMode;
+
                 // Only force a fresh EC temperature read when the dynamic icon is active
                 // (same behavior as v1.1.x — avoids spurious hardware reads that can
                 // interfere with HP firmware power-management and cause forced hibernate)
-                if(this.Icon.IsDynamic) {
+                if(this.Icon.IsDynamic || needsSafetyCheck) {
 
                     bool needForcedUpdate =
                         (this.FormMain == null || !this.FormMain.Visible)
@@ -388,12 +390,22 @@ namespace OmenMon.AppGui {
                     byte maxTemp = this.Op.Platform.GetMaxTemperature(needForcedUpdate);
 
                     // Thermal panic — only runs when we have a fresh, hardware-verified reading
-                    this.Op.CheckThermalPanic(maxTemp);
+                    if (this.Icon.IsDynamic) {
+                        this.Op.CheckThermalPanic(maxTemp);
+                    } else if (this.Op.IsThermalPanic) {
+                        this.Op.ClearThermalPanic();
+                    }
 
-                    // Update the icon background based on fan mode
-                    this.Icon.SetBackground(
-                        this.Op.Platform.Fans.GetMode() == BiosData.FanMode.Performance ?
-                            GuiIcon.BackgroundType.Warm : GuiIcon.BackgroundType.Cool);
+                    // Auto-revert safety check
+                    if (needsSafetyCheck) {
+                        this.Op.CheckFanConstSafety(maxTemp);
+                    }
+
+                    if (this.Icon.IsDynamic) {
+                        // Update the icon background based on fan mode
+                        this.Icon.SetBackground(
+                            this.Op.Platform.Fans.GetMode() == BiosData.FanMode.Performance ?
+                                GuiIcon.BackgroundType.Warm : GuiIcon.BackgroundType.Cool);
 
                     // Show temperature in configured unit.
                     // The dynamic icon uses a custom bitmap font — only the localized °C glyph
@@ -405,6 +417,7 @@ namespace OmenMon.AppGui {
                         ? string.Empty
                         : Config.Locale.Get(Config.L_UNIT + "Temperature" + Config.LS_CUSTOM_FONT);
                     this.Icon.Update(Conv.GetString((uint) displayTemp, 2, 10) + unitSuffix);
+                    }
 
                 } else if(this.Op.IsThermalPanic) {
 

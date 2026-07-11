@@ -457,9 +457,11 @@ namespace OmenMon.AppGui {
 
             }
 
-            // Save the reapply settings
+            // Save the reapply and safety settings
             Config.FanConstReapplyEnabled = this.ChkFanConstReapply.Checked;
             Config.FanConstReapplyInterval = (int) this.NumFanConstReapplyInterval.Value;
+            Config.FanConstSafetyEnabled = this.ChkFanConstSafety.Checked;
+            Config.FanConstSafetyTemp = (byte) this.NumFanConstSafetyTemp.Value;
             Config.Save();
 
             // Restore the default button look
@@ -603,6 +605,20 @@ namespace OmenMon.AppGui {
 
         // Handles the event when the fan constant speed re-apply interval is changed
         private void EventFanConstReapplyIntervalChanged(object sender, EventArgs e) {
+
+            this.BtnFanSet.Checked = true;
+
+        }
+
+        // Handles the event when the fan constant safety checkbox is toggled
+        private void EventFanConstSafetyChanged(object sender, EventArgs e) {
+
+            this.BtnFanSet.Checked = true;
+
+        }
+
+        // Handles the event when the fan constant safety temperature limit is changed
+        private void EventFanConstSafetyTempChanged(object sender, EventArgs e) {
 
             this.BtnFanSet.Checked = true;
 
@@ -854,6 +870,10 @@ namespace OmenMon.AppGui {
             this.ChkFanConstReapply.Checked = Config.FanConstReapplyEnabled;
             this.NumFanConstReapplyInterval.Value = Config.FanConstReapplyInterval;
 
+            // Update the safety checkbox state
+            this.ChkFanConstSafety.Checked = Config.FanConstSafetyEnabled;
+            this.NumFanConstSafetyTemp.Value = Config.FanConstSafetyTemp;
+
             // Query and retrieve fan control state
             bool isFanMax = Context.Op.Platform.Fans.GetMax();
             bool isFanOff = Context.Op.Platform.Fans.GetOff();
@@ -1061,6 +1081,36 @@ namespace OmenMon.AppGui {
                 this.TrkFan0Lvl.Value == this.TrkFan0Lvl.Minimum ? (byte) 0 : (byte) this.TrkFan0Lvl.Value,
                 this.TrkFan1Lvl.Value == this.TrkFan1Lvl.Minimum ? (byte) 0 : (byte) this.TrkFan1Lvl.Value
             };
+        }
+
+        // Safely reverts to Auto Mode from another thread and triggers overlay
+        public void RevertToAutoMode() {
+            if (this.InvokeRequired) {
+                this.Invoke(new Action(RevertToAutoMode));
+                return;
+            }
+
+            // Switch to Auto mode
+            this.RdoFanAuto.Checked = true;
+            
+            // Try to set "Default" if possible
+            if (this.CmbFanMode.Items.Count > 0) {
+                bool found = false;
+                foreach (dynamic item in this.CmbFanMode.Items) {
+                    if (item.Value == "Default") {
+                        this.CmbFanMode.SelectedItem = item;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) this.CmbFanMode.SelectedIndex = 0;
+            }
+
+            // Trigger the set action
+            this.EventActionFanSet(this.BtnFanSet, EventArgs.Empty);
+
+            // Show TopMost overlay
+            GuiFormOverlay.ShowOverlay();
         }
 
     }

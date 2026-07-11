@@ -115,6 +115,10 @@ namespace OmenMon.Library {
         // How often to re-apply the constant fan levels [s]
         public static int FanConstReapplyInterval = 5;
 
+        // Auto-revert to dynamic mode from constant mode at a certain temperature limit
+        public static bool FanConstSafetyEnabled = false;
+        public static byte FanConstSafetyTemp = 85;
+
         // Fan modes that should always be placed on top of the list
         // (the rest are legacy modes, irrelevant but kept for completeness)
         public static List<string> FanModesSticky = new List<string> { "Default", "Performance", "Cool" };

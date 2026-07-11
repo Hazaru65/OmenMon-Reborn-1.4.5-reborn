@@ -332,6 +332,19 @@ namespace OmenMon.AppGui {
 
         }
 
+        // Checks temperature and reverts from Constant mode to Auto if safety threshold is exceeded
+        public void CheckFanConstSafety(byte maxTemp) {
+
+            // Only proceed if safety feature is enabled and we are exceeding the threshold
+            if(!Config.FanConstSafetyEnabled || maxTemp < Config.FanConstSafetyTemp)
+                return;
+
+            if(Context.FormMain != null && Context.FormMain.IsConstMode) {
+                Context.FormMain.RevertToAutoMode();
+            }
+
+        }
+
         // Responds to power-mode status change events
         public void PowerChange() {
 
