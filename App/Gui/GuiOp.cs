@@ -339,9 +339,91 @@ namespace OmenMon.AppGui {
             if(!Config.FanConstSafetyEnabled || maxTemp < Config.FanConstSafetyTemp)
                 return;
 
-            if(Context.FormMain != null && Context.FormMain.IsConstMode) {
-                Context.FormMain.RevertToAutoMode();
+            // Determine if we are in constant (manual) fan mode.
+            // Check GUI state if available, otherwise fall back to hardware query.
+            bool isConst = false;
+            if(Context.FormMain != null)
+                isConst = Context.FormMain.IsConstMode;
+            else
+                isConst = Platform.Fans.GetManual();
+
+            if(!isConst)
+                return;
+
+            // Perform the hardware-level revert
+            RevertToAuto();
+
+            // Sync GUI if available
+            if(Context.FormMain != null)
+                Context.FormMain.SyncAfterRevert();
+
+            // Show overlay (works regardless of FormMain state)
+            GuiFormOverlay.ShowOverlay();
+
+        }
+
+        // Hardware-level revert from Constant to Auto mode.
+        // Does not depend on any GUI state — safe to call from tray-only context.
+        private void RevertToAuto() {
+
+            // Terminate any running fan program first
+            this.Program.Terminate();
+
+            // Read the current hardware mode BEFORE clearing anything.
+            // This gives us the actual mode the device is using (e.g. LegacyPerformance)
+            // instead of assuming "Default" which may be invalid on legacy-mode hardware.
+            BiosData.FanMode currentMode;
+            try {
+                currentMode = Platform.Fans.GetMode();
+            } catch {
+                currentMode = BiosData.FanMode.LegacyDefault;
             }
+
+            // Disable maximum speed if active
+            try {
+                if(Platform.Fans.GetMax())
+                    Platform.Fans.SetMax(false);
+            } catch { }
+
+            // Re-enable fan if off
+            try {
+                if(Platform.Fans.GetOff())
+                    Platform.Fans.SetOff(false);
+            } catch { }
+
+            // Clear custom speed settings
+            try {
+                Platform.Fans.SetLevels(new byte[] { Byte.MaxValue, Byte.MaxValue });
+            } catch { }
+
+            // Disable manual fan mode to restore BIOS automatic control
+            if(Config.FanLevelNeedManual) {
+                try {
+                    Platform.Fans.SetManual(false);
+                } catch { }
+            }
+
+            // Reset countdown to zero so EC doesn't maintain stale constant-speed state
+            try {
+                Platform.Fans.SetCountdown(0);
+            } catch { }
+
+            // Restore the fan mode that was actually active on the hardware.
+            // On legacy-mode devices currentMode will be e.g. LegacyPerformance (0x01),
+            // on modern devices it will be Default (0x30) — either way we send back
+            // what the hardware already understands.
+            try {
+                Platform.Fans.SetMode(currentMode);
+            } catch { }
+
+            // Balloon notification
+            string tempStr = Config.TemperatureUseFahrenheit
+                ? ((Config.FanConstSafetyTemp * 9 / 5) + 32) + "°F"
+                : Config.FanConstSafetyTemp + "°C";
+            Context.ShowBalloonTip(
+                "⚠ " + tempStr + " — Constant fan mode cancelled, reverting to auto.",
+                "OmenMon — Fan Safety",
+                ToolTipIcon.Warning);
 
         }
 

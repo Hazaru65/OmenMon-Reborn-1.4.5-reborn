@@ -452,6 +452,13 @@ namespace OmenMon.AppGui {
                 // Set the levels to 0xFF to clear any custom speed settings
                 Context.Op.Platform.Fans.SetLevels(new byte[] {Byte.MaxValue, Byte.MaxValue});
 
+                // Disable manual fan mode to fully release EC control back to BIOS
+                if(Config.FanLevelNeedManual)
+                    Context.Op.Platform.Fans.SetManual(false);
+
+                // Reset countdown to zero so EC doesn't maintain stale constant-speed state
+                Context.Op.Platform.Fans.SetCountdown(0);
+
                 // Enable automatic fan in the selected mode
                 Context.Op.Platform.Fans.SetMode(fanModeAsk);
 
@@ -1083,34 +1090,16 @@ namespace OmenMon.AppGui {
             };
         }
 
-        // Safely reverts to Auto Mode from another thread and triggers overlay
-        public void RevertToAutoMode() {
+        // Synchronizes GUI controls after a hardware-level revert to Auto mode.
+        // Called by GuiOp.CheckFanConstSafety after the hardware changes are applied.
+        public void SyncAfterRevert() {
             if (this.InvokeRequired) {
-                this.Invoke(new Action(RevertToAutoMode));
+                this.Invoke(new Action(SyncAfterRevert));
                 return;
             }
 
-            // Switch to Auto mode
-            this.RdoFanAuto.Checked = true;
-            
-            // Try to set "Default" if possible
-            if (this.CmbFanMode.Items.Count > 0) {
-                bool found = false;
-                foreach (dynamic item in this.CmbFanMode.Items) {
-                    if (item.Value == "Default") {
-                        this.CmbFanMode.SelectedItem = item;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) this.CmbFanMode.SelectedIndex = 0;
-            }
-
-            // Trigger the set action
-            this.EventActionFanSet(this.BtnFanSet, EventArgs.Empty);
-
-            // Show TopMost overlay
-            GuiFormOverlay.ShowOverlay();
+            // Reflect the new state in the GUI
+            UpdateFanCtl();
         }
 
     }

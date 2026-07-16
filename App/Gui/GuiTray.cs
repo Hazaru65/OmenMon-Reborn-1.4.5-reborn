@@ -376,7 +376,8 @@ namespace OmenMon.AppGui {
             // Update the notification icon and tray tooltip
             if(this.UpdateIconTick++ == 0) {
 
-                bool needsSafetyCheck = Config.FanConstSafetyEnabled && this.FormMain != null && this.FormMain.IsConstMode;
+                bool needsSafetyCheck = Config.FanConstSafetyEnabled
+                    && (this.FormMain != null ? this.FormMain.IsConstMode : this.Op.Platform.Fans.GetManual());
 
                 // Only force a fresh EC temperature read when the dynamic icon is active
                 // (same behavior as v1.1.x — avoids spurious hardware reads that can

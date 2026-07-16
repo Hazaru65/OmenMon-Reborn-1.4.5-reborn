@@ -69,13 +69,13 @@ namespace OmenMon.AppGui {
         // Static instance for easy calling
         private static GuiFormOverlay _instance;
         public static void ShowOverlay() {
-            if (_instance == null || _instance.IsDisposed) {
-                _instance = new GuiFormOverlay();
+            if (GuiTray.Context != null && GuiTray.Context.FormMain != null && GuiTray.Context.FormMain.InvokeRequired) {
+                GuiTray.Context.FormMain.Invoke(new Action(ShowOverlay));
+                return;
             }
 
-            if (_instance.InvokeRequired) {
-                _instance.Invoke(new Action(ShowOverlay));
-                return;
+            if (_instance == null || _instance.IsDisposed) {
+                _instance = new GuiFormOverlay();
             }
 
             _instance.Show();
