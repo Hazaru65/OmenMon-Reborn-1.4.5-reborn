@@ -80,3 +80,49 @@ The `includeEcDiff` flag avoids the 5-second wait for a second EC snapshot when 
 `GuiMenu.EventActionContribute` calls `ProbeGetMarkdown(includeEcDiff: false)`, places the result on the system clipboard, and opens the GitHub new-issue URL in the default browser via `Process.Start`. The full operation is synchronous and completes in under a second. The user pastes the clipboard content directly into the GitHub issue body — no file management, no copy-pasting from a terminal.
 
 This design keeps the application itself strictly offline (no outbound connections are initiated by OmenMon), while still making it trivial for a non-technical user to contribute their hardware data.
+
+---
+
+## Phase 7 — RGB Preset Hotkey & Omen Key Custom Actions
+
+### RGB Preset Hotkey
+A dedicated method `CycleColorPresets()` in `App/Gui/GuiOp.cs` cycles through all `<ColorPresets>` defined in `OmenMon.xml` when the Omen key is pressed (if enabled via `KeyToggleColorPreset`). The cycle identifies the current preset by comparing active hardware color levels against configured presets, wrapping cleanly back to the first preset.
+
+---
+
+## Phase 8 — WinRing0 to PawnIO Kernel Driver Migration (v1.4.0)
+
+### Security & HVCI Compliance
+WinRing0 kernel driver loading triggered Microsoft Defender alerts and HVCI (Memory Integrity) blocks on modern Windows 11 builds. Phase 8 replaced WinRing0 with [PawnIO](https://pawnio.eu/), using a Microsoft-signed kernel driver and embedded bytecode module (`Resources/LpcACPIEC.bin`).
+
+### Abstracted Driver Layer
+`Driver/PawnIo.cs` exposes an execution engine for PawnIO, while `Driver/Ring0.cs` retains its legacy public interface. Higher hardware abstraction layers (`Hardware/Ec.cs`) remain completely unaware of the underlying driver engine swap.
+
+---
+
+## Phase 9 — Crash Telemetry, EC Trace & Auto-Calibration Architecture (v1.4.0)
+
+### Telemetry-Free Crash Dumper (`App/Crash.cs`)
+Hooks unhandled exception pipelines and dumps local `OmenMon-crash-*.log` files containing full stack trace, process metadata, and system environment info without initiating any network connections.
+
+### Lock-Free EC Trace Buffer (`Library/EcTrace.cs`)
+Maintains a 1024-entry circular buffer recording register reads/writes (`ReadByte`/`WriteByte`) to aid in diagnosing intermittent fan spikes or hardware latching bugs.
+
+### Auto-Calibration Sweep & Sidecar (`Library/AutoCal.cs`, `CliOpCalibration.cs`)
+Active 4-step fan stress sweep heuristically identifies 16-bit LE, period-encoded, or direct-multiplier tachometer registers and persists them to `OmenMon-AutoCal.xml`.
+
+---
+
+## Phase 10 — Fan Safety Auto-Revert & Topmost Overlay Architecture
+
+### Safety Auto-Revert (`FanConstSafetyEnabled` / `FanConstSafetyTemp`)
+To prevent thermal throttling and hardware damage when low manual constant fan speeds are left active during heavy workloads:
+- `App/Gui/GuiOp.cs` implements `CheckFanConstSafety(byte maxTemp)`.
+- When temperature exceeds `FanConstSafetyTemp` (e.g. 85°C), `RevertToAuto()` executes hardware reset commands (clearing custom speed levels, disengaging manual mode, setting countdown to 0, and restoring BIOS dynamic fan control).
+- `SyncAfterRevert()` updates GUI controls (`RdoFanAuto.Checked = true`, locking trackbars `TrkFan0Lvl.Enabled = false`) to ensure UI and periodic background monitor loops (`UpdateFan()`, `GuiTray`) stay synchronized in Auto mode rather than re-asserting constant speed settings.
+
+### Non-Intrusive In-Game Overlay (`App/Gui/GuiFormOverlay.cs`)
+- Provides a transparent, topmost borderless window (`WS_EX_LAYERED`, `WS_EX_TRANSPARENT`, `WS_EX_NOACTIVATE`, `WS_EX_TOOLWINDOW`).
+- Displays a critical temperature warning without stealing focus from full-screen games or applications.
+- Features a self-terminating timer (3 seconds) to automatically dismiss after notification.
+
