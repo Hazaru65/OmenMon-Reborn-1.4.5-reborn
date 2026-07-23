@@ -1099,6 +1099,11 @@ namespace OmenMon.AppGui {
             }
 
             // Reflect the new state in the GUI
+            this.RdoFanAuto.Checked = true;
+            this.TrkFan0Lvl.Enabled = false;
+            this.TrkFan1Lvl.Enabled = false;
+            this.BtnFanSet.Checked = false;
+
             UpdateFanCtl();
         }
 
