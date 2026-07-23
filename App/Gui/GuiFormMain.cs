@@ -1082,6 +1082,7 @@ namespace OmenMon.AppGui {
 
         // Properties and methods exposed for the constant speed re-apply feature
         public bool IsConstMode => this.RdoFanConst.Checked;
+        public string SelectedFanMode => this.CmbFanMode.SelectedValue as string;
 
         public byte[] GetConstLevels() {
             return new byte[] {
@@ -1100,6 +1101,8 @@ namespace OmenMon.AppGui {
 
             // Reflect the new state in the GUI
             this.RdoFanAuto.Checked = true;
+            this.TrkFan0Lvl.Value = (this.TrkFan0Lvl.Minimum + this.TrkFan0Lvl.Maximum) / 2;
+            this.TrkFan1Lvl.Value = (this.TrkFan1Lvl.Minimum + this.TrkFan1Lvl.Maximum) / 2;
             this.TrkFan0Lvl.Enabled = false;
             this.TrkFan1Lvl.Enabled = false;
             this.BtnFanSet.Checked = false;

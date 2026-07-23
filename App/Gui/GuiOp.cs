@@ -369,26 +369,28 @@ namespace OmenMon.AppGui {
             // Terminate any running fan program first
             this.Program.Terminate();
 
-            // Read the current hardware mode BEFORE clearing anything.
-            // This gives us the actual mode the device is using (e.g. LegacyPerformance)
-            // instead of assuming "Default" which may be invalid on legacy-mode hardware.
-            BiosData.FanMode currentMode;
+            // Determine target fan mode (prefer selected GUI mode if available, fallback to hardware query)
+            BiosData.FanMode targetMode;
             try {
-                currentMode = Platform.Fans.GetMode();
+                if (Context.FormMain != null && !string.IsNullOrEmpty(Context.FormMain.SelectedFanMode)) {
+                    targetMode = (BiosData.FanMode) Enum.Parse(
+                        typeof(BiosData.FanMode),
+                        Context.FormMain.SelectedFanMode);
+                } else {
+                    targetMode = Platform.Fans.GetMode();
+                }
             } catch {
-                currentMode = BiosData.FanMode.LegacyDefault;
+                targetMode = BiosData.FanMode.LegacyDefault;
             }
 
-            // Disable maximum speed if active
+            // Unconditionally re-enable fan if off (clears any hardware or level-based off latch)
             try {
-                if(Platform.Fans.GetMax())
-                    Platform.Fans.SetMax(false);
+                Platform.Fans.SetOff(false);
             } catch { }
 
-            // Re-enable fan if off
+            // Unconditionally disable maximum speed if active
             try {
-                if(Platform.Fans.GetOff())
-                    Platform.Fans.SetOff(false);
+                Platform.Fans.SetMax(false);
             } catch { }
 
             // Clear custom speed settings
@@ -396,24 +398,19 @@ namespace OmenMon.AppGui {
                 Platform.Fans.SetLevels(new byte[] { Byte.MaxValue, Byte.MaxValue });
             } catch { }
 
-            // Disable manual fan mode to restore BIOS automatic control
-            if(Config.FanLevelNeedManual) {
-                try {
-                    Platform.Fans.SetManual(false);
-                } catch { }
-            }
+            // Unconditionally disable manual fan mode to restore BIOS automatic control
+            try {
+                Platform.Fans.SetManual(false);
+            } catch { }
 
             // Reset countdown to zero so EC doesn't maintain stale constant-speed state
             try {
                 Platform.Fans.SetCountdown(0);
             } catch { }
 
-            // Restore the fan mode that was actually active on the hardware.
-            // On legacy-mode devices currentMode will be e.g. LegacyPerformance (0x01),
-            // on modern devices it will be Default (0x30) — either way we send back
-            // what the hardware already understands.
+            // Forcefully re-apply target fan mode so BIOS thermal curve latches
             try {
-                Platform.Fans.SetMode(currentMode);
+                Platform.Fans.SetMode(targetMode);
             } catch { }
 
             // Balloon notification
