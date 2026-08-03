@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.4.5-reborn] - 2026-08-03
+
+### Fixed
+
+- **Auto fan mode not driving fans on boards whose BIOS/EC won't run its own fan curve (e.g. 8BD4).** Selecting Auto released the fan latch but relied on the BIOS to run the temperature curve, which these boards never do — the fans stayed at the last Constant-mode speed regardless of temperature. Auto mode now runs a new level-only `Auto` fan program: a configurable temperature→fan-level curve (editorial: 21/00 at idle up to 55/55 at 85 °C) that OmenMon drives every program tick. Because the program is level-only, it never touches the fan mode register or the GPU power, so the user's mode choice is preserved.
+- **Fan-safety revert (Constant→Auto at the temperature threshold) left fans undriven on the same boards.** `RevertToAuto()` ran its own hardware path and never started the temperature curve, so after the 85 °C safety threshold cancelled Constant mode the fans were released but idle — manual Apply started the curve only because it goes through the fixed Auto branch. `RevertToAuto()` now restarts the `Auto` program under the same condition, so the revert actually drives the fans. `AutoConfig()` also skips the level-only `Auto` program on boards that don't need it.
+
+### Added
+
+- **Level-only fan programs.** A `LevelOnly` flag on a fan program makes it drive only the fan levels each tick, leaving the fan mode and GPU power untouched (used by the new `Auto` program; `LevelOnly` is emitted in `OmenMon.xml` and parsed back on load).
+
 ## [1.4.1-reborn] - 2026-05-19
 
 ### Added
