@@ -1,0 +1,29 @@
+# Local .NET SDK (714 MB / 5000+ files — noise, not project source)
+.sdk/
+
+# Build outputs
+Bin/
+Obj/
+bin/
+obj/
+
+# IDE / tool caches
+.vs/
+
+# Windows shortcut
+docs/Belgeler - Kisayol.lnk
+
+# Binary tooling
+nuget.exe
+
+# Scratch / backup / stray source (not compiled, not in .csproj)
+scratch_test.cs
+temp_old_main.cs
+
+# Generated resource/config artifacts (mirror .gitignore)
+OmenMon.manifest
+OmenMon.resx
+OmenMon.exe.config
+
+# Wiki screenshots (binary)
+wiki/images/*.png

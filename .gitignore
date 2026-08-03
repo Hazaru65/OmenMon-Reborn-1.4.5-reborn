@@ -7,3 +7,9 @@ obj/
 OmenMon.manifest
 OmenMon.resx
 OmenMon.exe.config
+# Local .NET SDK (714 MB / 5000+ files)
+.sdk/
+# Windows shortcut
+docs/Belgeler - Kisayol.lnk
+# Stray backup (untracked)
+temp_old_main.cs
