@@ -33,6 +33,11 @@ namespace OmenMon.Hardware.Platform {
         // optional override fields (TempCpuReg/Gpu, ManualValueOn/Off) the preset's own
         // defaults already encode "no override".
         private PlatformPreset Preset;
+
+        // Boards whose BIOS/EC won't run its own fan curve in Auto mode
+        // (e.g. 8BD4). Same flag that gates the EC 0xFF release punch —
+        // both symptoms come from the same broken-BIOS-auto root.
+        public bool RequiresAutoDrive => this.Preset.FanLevelReleaseViaEc;
 #endregion
 
 #region Initialization
@@ -114,7 +119,8 @@ namespace OmenMon.Hardware.Platform {
                     PlatformData.AccessType.Read | PlatformData.AccessType.Write),
 
                 preset.ManualValueOn,
-                preset.ManualValueOff);
+                preset.ManualValueOff,
+                preset.FanLevelReleaseViaEc);
 
         }
 

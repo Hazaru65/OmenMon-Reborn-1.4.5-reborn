@@ -127,6 +127,10 @@ namespace OmenMon.Library {
         public static SortedList<string, FanProgramData> FanProgram =
             new SortedList<string, FanProgramData>();
 
+        // Name of the Auto fan program — a level-only temperature curve driven by
+        // OmenMon on boards whose BIOS/EC won't run its own fan curve in Auto mode
+        public const string FanProgramAuto = "Auto";
+
         // Default fan program, which might be loaded on startup
         public static string FanProgramDefault; // Unset by default, since there is no default fan program
 
@@ -493,6 +497,7 @@ namespace OmenMon.Library {
         private const string XmlElementFanProgramLevel = "Level";
         private const string XmlElementFanProgramLevelCpu = "Cpu";
         private const string XmlElementFanProgramLevelGpu = "Gpu";
+        private const string XmlElementFanProgramLevelOnly = "LevelOnly";
         private const string XmlElementTemperature = "Temperature";
         private const string XmlElementTemperatureSensor = "Sensor";
         private const string XmlAttrColorPresetName = "Name";
@@ -523,6 +528,7 @@ namespace OmenMon.Library {
         private const string XmlElementManualReg        = "ManualReg";
         private const string XmlElementManualValueOn    = "ManualValueOn";
         private const string XmlElementManualValueOff   = "ManualValueOff";
+        private const string XmlElementFanLevelReleaseViaEc = "FanLevelReleaseViaEc";
         private const string XmlElementTempCpuReg       = "TempCpuReg";
         private const string XmlElementTempGpuReg       = "TempGpuReg";
         private const string XmlElementModeReg          = "ModeReg";

@@ -56,6 +56,15 @@ namespace OmenMon.Hardware.Platform {
         // <Temperature> config" — leaves every existing model entry unaffected.
         public byte TempCpuReg = 0;
         public byte TempGpuReg = 0;
+
+        // Per-model Auto-release behaviour. When true, FanArray.SetLevels writes the
+        // 0xFF release sentinel directly to the EC level registers after the BIOS
+        // SetFanLevel call. Required on boards where the BIOS accepts 0xFF but only
+        // applies it to some fans — on 8BD4 (HP Victus 16-S0053NT) the call releases
+        // the GPU fan yet leaves the CPU register (EC[0x11]) latching the last
+        // constant level, so the fan never returns to temperature-driven control.
+        // Default false = BIOS call only, unchanged behaviour for existing models.
+        public bool FanLevelReleaseViaEc = false;
 #endregion
 
 #region Default

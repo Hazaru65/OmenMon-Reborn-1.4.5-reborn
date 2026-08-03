@@ -32,3 +32,14 @@ Bu proje HP Omen/Victus dizüstü bilgisayarlar için donanım kontrolü (Fan, S
 - **Dinamik Modeller:** Eski donanıma gömülü (hardcoded) cihaz listesi yerine, XML tabanlı esnek `PlatformPreset` sınıfı kullanılır. Modeller bellekten `Config.Models` ile okunur.
 - **Tarama ve Güvenlik:** Bilinmeyen bir cihaz bağlandığında `Hardware/AutoDetector.cs` salt-okunur (read-only) güvenli bir donanım taraması yapar ve riskli register'lara yazma yapmaz.
 - **Sorunlu Sensörler:** Cihazların bazılarında (TNT2-TNT5 sensörleri) gerçek dışı sıcaklıklar raporlandığı (ve fanları %100'de kilitlediği) için `ConfigData.TemperatureSensor` üzerinde bunlar varsayılan olarak kapalıdır.
+
+## Özel Ajan Rolleri
+
+### Agent: Griller (Plan & Mimari Eleştirmeni)
+- **Rol:** Sunduğum planları, mimari kararları ve kod çözümlerini acımasızca sorgulayan Red Team ajanı.
+- **Odak:** Mantık hataları, gizli varsayımlar (anchor'lar), kenar durumlar (edge cases) ve güvenlik açıkları.
+- **Tavır:** Aşırı şüpheci, net ve doğrudan. "Şu varsayım yanlışsa ne olur?" sorusunu odak noktası yap.
+- **Çalışma Şekli:** 
+  1. Sunulan planı veya koda dair varsayımları doğrudan kabul etme.
+  2. Planın patlayabileceği en az 3 senaryo veya kenar durum çıkar.
+  3. Kullanıcı `@Griller` çağırdığında veya karmaşık bir plan yapıldığında devreye gir.

@@ -67,6 +67,11 @@ namespace OmenMon.Hardware.Platform {
         private byte ManualValueOn;
         private byte ManualValueOff;
 
+        // When true, the SetLevels(0xFF, ...) release gesture additionally writes
+        // 0xFF straight to the EC level registers after the BIOS call. See
+        // PlatformPreset.FanLevelReleaseViaEc for the boards that need this.
+        private bool FanLevelReleaseViaEc;
+
         // Stores the fan mode component
         protected IPlatformReadWriteComponent Mode;
 
@@ -81,10 +86,12 @@ namespace OmenMon.Hardware.Platform {
             IPlatformReadWriteComponent fanMode,
             IPlatformReadWriteComponent fanSwitch,
             byte manualValueOn  = (byte) PlatformData.FanManual.On,
-            byte manualValueOff = (byte) PlatformData.FanManual.Off) {
+            byte manualValueOff = (byte) PlatformData.FanManual.Off,
+            bool fanLevelReleaseViaEc = false) {
 
             this.ManualValueOn  = manualValueOn;
             this.ManualValueOff = manualValueOff;
+            this.FanLevelReleaseViaEc = fanLevelReleaseViaEc;
 
             // Initialize the fan array
             this.Fan = new IFan[PlatformData.FanCount];
@@ -158,6 +165,21 @@ namespace OmenMon.Hardware.Platform {
                     // status is always checked, and reported in CLI mode
 
                 }
+
+                // Some boards accept the BIOS release gesture but only apply it
+                // partially: on 8BD4 (HP Victus 16-S0053NT) SetFanLevel(0xFF, 0xFF)
+                // returns success yet releases only the GPU fan — the CPU EC level
+                // register (0x11) keeps latching the last constant value, so the
+                // fan stays pinned regardless of temperature (the EC trace shows
+                // the call never throws, it just never clears the CPU latch). On
+                // flagged models, punch the release sentinel straight into the EC
+                // level registers after the BIOS call. Limited to the 0xFF release
+                // gesture: real level sets keep using the BIOS path alone (proven
+                // to work on these boards), and unflagged models are unaffected.
+                if(this.FanLevelReleaseViaEc)
+                    for(int i = 0; i < levels.Length; i++)
+                        if(levels[i] == Byte.MaxValue)
+                            try { this.Fan[i].SetLevel(Byte.MaxValue); } catch { }
             }
         }
 

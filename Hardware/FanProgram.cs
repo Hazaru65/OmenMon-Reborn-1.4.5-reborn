@@ -23,6 +23,11 @@ namespace OmenMon.Hardware.Platform {
         // to fan levels for each fan
         public SortedDictionary<byte, byte[]> Level;
 
+        // Whether the program drives only the fan levels and never
+        // touches the fan mode or the GPU power (used by Auto mode
+        // on boards whose BIOS/EC won't run its own fan curve)
+        public bool LevelOnly;
+
         // Fan program name
         public string Name;
 
@@ -31,12 +36,14 @@ namespace OmenMon.Hardware.Platform {
             string name,
             BiosData.FanMode fanMode,
             BiosData.GpuPowerLevel gpuPower,
-            SortedDictionary<byte, byte[]> level) {
+            SortedDictionary<byte, byte[]> level,
+            bool levelOnly = false) {
 
             this.Name = name;
             this.FanMode = fanMode;
             this.GpuPower = gpuPower;
             this.Level = level;
+            this.LevelOnly = levelOnly;
 
         }
 
@@ -72,6 +79,10 @@ namespace OmenMon.Hardware.Platform {
         // Level list for the current program
         // to facilitate threshold look-ups
         private List<byte> Levels;
+
+        // Whether the current program drives only the fan levels,
+        // leaving the fan mode and GPU power untouched
+        private bool LevelOnlyProgram;
 
         // Name of the last running program
         private string Name;
@@ -256,12 +267,19 @@ namespace OmenMon.Hardware.Platform {
             // Perform other updates, only if necessary
             // or, in case of the fan mode, configured to do so
             // without checking, so as to reduce the EC burden
-            UpdateFanMode(!Config.FanProgramModeCheckFirst);
-            UpdateGpuPower();
+            // Level-only programs (e.g. Auto) leave the fan mode
+            // and GPU power untouched — they drive just the levels
+            if(!this.LevelOnlyProgram) {
+                UpdateFanMode(!Config.FanProgramModeCheckFirst);
+                UpdateGpuPower();
+            }
 
             // Fan-mode setting resets the countdown,
-            // thus no need to update in such case
-            if(Config.FanProgramModeCheckFirst)
+            // thus no need to update in such case.
+            // Level-only programs (e.g. Auto) never set the fan mode,
+            // so extend the countdown explicitly to keep the manual
+            // fan levels from being dropped by the EC between ticks
+            if(Config.FanProgramModeCheckFirst || this.LevelOnlyProgram)
                 UpdateCountdown();
 
             // Report success
@@ -354,6 +372,9 @@ namespace OmenMon.Hardware.Platform {
 
             // Set up the program name
             this.Name = name;
+
+            // Set up the level-only flag
+            this.LevelOnlyProgram = Config.FanProgram[this.Name].LevelOnly;
 
             // Set up the level keys
             this.Levels = new List<byte>(Config.FanProgram[this.Name].Level.Keys);

@@ -437,11 +437,17 @@ namespace OmenMon.AppGui {
                 // Terminate any running fan program
                 Context.Op.Program.Terminate();
 
-                // Query the current and requested mode
-                BiosData.FanMode fanModeNow = Context.Op.Platform.Fans.GetMode();
-                BiosData.FanMode fanModeAsk = (BiosData.FanMode) Enum.Parse(
-                    typeof(BiosData.FanMode), 
-                    (string) this.CmbFanMode.SelectedValue);
+                // Query the requested mode (guard against a transient EC read
+                // failure aborting the whole Auto apply before the level clear).
+                // Mirrors the defensive wrapping in GuiOp.RevertToAuto.
+                BiosData.FanMode fanModeAsk;
+                try {
+                    fanModeAsk = (BiosData.FanMode) Enum.Parse(
+                        typeof(BiosData.FanMode),
+                        (string) this.CmbFanMode.SelectedValue);
+                } catch {
+                    fanModeAsk = BiosData.FanMode.Default;
+                }
 
                 if(isFanOff) // Re-enable fan if off first
                     Context.Op.Platform.Fans.SetOff(false);
@@ -449,17 +455,31 @@ namespace OmenMon.AppGui {
                 if(isFanMax) // Disable maximum speed first
                     Context.Op.Platform.Fans.SetMax(false);
 
-                // Set the levels to 0xFF to clear any custom speed settings
-                Context.Op.Platform.Fans.SetLevels(new byte[] {Byte.MaxValue, Byte.MaxValue});
+                // On boards whose BIOS/EC won't run its own fan curve in Auto mode
+                // (RequiresAutoDrive, e.g. 8BD4), drive the fans with the Auto fan
+                // program instead — a level-only temperature curve that never
+                // touches the fan mode or the GPU power, so the user's mode choice
+                // below is preserved
+                if(Config.FanProgram.ContainsKey(Config.FanProgramAuto)
+                    && Context.Op.Platform.RequiresAutoDrive) {
+                    Context.Op.Program.Run(Config.FanProgramAuto);
 
-                // Disable manual fan mode to fully release EC control back to BIOS
-                if(Config.FanLevelNeedManual)
-                    Context.Op.Platform.Fans.SetManual(false);
+                } else {
 
-                // Reset countdown to zero so EC doesn't maintain stale constant-speed state
-                Context.Op.Platform.Fans.SetCountdown(0);
+                    // Set the levels to 0xFF to clear any custom speed settings
+                    Context.Op.Platform.Fans.SetLevels(new byte[] {Byte.MaxValue, Byte.MaxValue});
+
+                    // Disable manual fan mode to fully release EC control back to BIOS
+                    if(Config.FanLevelNeedManual)
+                        Context.Op.Platform.Fans.SetManual(false);
+
+                    // Reset countdown to zero so EC doesn't maintain stale constant-speed state
+                    Context.Op.Platform.Fans.SetCountdown(0);
+
+                }
 
                 // Enable automatic fan in the selected mode
+                // (the Auto program is level-only, so it will not overwrite this)
                 Context.Op.Platform.Fans.SetMode(fanModeAsk);
 
             }
@@ -854,8 +874,13 @@ namespace OmenMon.AppGui {
             }
 
             // Update the current fan mode
-            // Hold if the Set button is already highlighted or the list is currently open
-            if(!this.BtnFanSet.Checked && !this.CmbFanMode.DroppedDown)
+            // Hold if the Set button is already highlighted or the list is currently open.
+            // While the Auto program runs, the mode is the user's choice — on boards
+            // whose EC mode register is never updated by the WMI SetMode call (e.g. 8BD4,
+            // always reads 0x01), reading it back would snap the combo back on every tick
+            if(!this.BtnFanSet.Checked && !this.CmbFanMode.DroppedDown
+                && !(Context.Op.Program.IsEnabled
+                    && Context.Op.Program.GetName() == Config.FanProgramAuto))
             try {
                 this.CmbFanMode.SelectedValue = Enum.GetName(typeof(BiosData.FanMode), Context.Op.Platform.Fans.GetMode());
             } catch { }
@@ -886,9 +911,16 @@ namespace OmenMon.AppGui {
             bool isFanOff = Context.Op.Platform.Fans.GetOff();
 
             // Fan program is active if a flag to that effect is set
-            // This takes precedence over all the other queries
-            if(Context.Op.Program.IsEnabled)
-                this.RdoFanProg.Checked = true;
+            // This takes precedence over all the other queries.
+            // The Auto program is what drives Auto mode on boards whose
+            // BIOS/EC won't run its own fan curve, so keep the Auto radio
+            // selected instead of falling through to the Prog radio
+            if(Context.Op.Program.IsEnabled) {
+                if(Context.Op.Program.GetName() == Config.FanProgramAuto)
+                    this.RdoFanAuto.Checked = true;
+                else
+                    this.RdoFanProg.Checked = true;
+            }
 
             // If the fan is switched off, the setting should reflect that
             else if(isFanOff)
@@ -1082,7 +1114,6 @@ namespace OmenMon.AppGui {
 
         // Properties and methods exposed for the constant speed re-apply feature
         public bool IsConstMode => this.RdoFanConst.Checked;
-        public string SelectedFanMode => this.CmbFanMode.SelectedValue as string;
 
         public byte[] GetConstLevels() {
             return new byte[] {

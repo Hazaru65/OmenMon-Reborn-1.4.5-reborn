@@ -423,6 +423,16 @@ namespace OmenMon.Library {
                                 p.TempCpuReg = Conv.GetByte(node[XmlElementTempCpuReg].InnerText);
                             if(node[XmlElementTempGpuReg] != null)
                                 p.TempGpuReg = Conv.GetByte(node[XmlElementTempGpuReg].InnerText);
+                            // Optional per-model Auto-release flag. When true, the
+                            // SetLevels(0xFF, ...) release gesture also writes 0xFF
+                            // straight to the EC level registers after the BIOS call,
+                            // because on these boards (e.g. 8BD4) the BIOS releases
+                            // only the GPU fan and the CPU register keeps latching
+                            // the last constant level. Absent = false (BIOS only).
+                            if(node[XmlElementFanLevelReleaseViaEc] != null)
+                                p.FanLevelReleaseViaEc =
+                                    node[XmlElementFanLevelReleaseViaEc].InnerText.Trim().Equals(
+                                        "true", System.StringComparison.OrdinalIgnoreCase);
                             Models[productId]  = p;
                         } catch { }
                     }
@@ -449,12 +459,19 @@ namespace OmenMon.Library {
                             }
 
                             // Create a new fan program from the configuration data
+                            // The LevelOnly flag is optional — absent means the program
+                            // also maintains the fan mode and the GPU power level
+                            bool levelOnly = false;
+                            if(node[XmlElementFanProgramLevelOnly] != null)
+                                levelOnly = node[XmlElementFanProgramLevelOnly].InnerText.Trim().Equals(
+                                    "true", StringComparison.OrdinalIgnoreCase);
                             FanProgram[node.Attributes[XmlAttrFanProgramName].Value] =
                                 new FanProgramData(
                                     node.Attributes[XmlAttrFanProgramName].Value,
                                     (BiosData.FanMode) Enum.Parse(typeof(BiosData.FanMode), node[XmlElementFanProgramMode].InnerText),
                                     (BiosData.GpuPowerLevel) Enum.Parse(typeof(BiosData.GpuPowerLevel), node[XmlElementFanProgramPower].InnerText),
-                                    levels);
+                                    levels,
+                                    levelOnly);
 
                         } catch { }
 
@@ -661,6 +678,12 @@ namespace OmenMon.Library {
                         node.AppendChild(xml.CreateElement(XmlElementFanProgramPower)).InnerText =
                             Enum.GetName(typeof(BiosData.GpuPowerLevel), FanProgram[name].GpuPower);
 
+                        // Store the level-only flag, when set
+                        // (absent otherwise, so existing programs stay clean on round-trip)
+                        if(FanProgram[name].LevelOnly)
+                            node.AppendChild(xml.CreateElement(XmlElementFanProgramLevelOnly)).InnerText =
+                                XmlSaveBoolTrue;
+
                         // For each programmed fan level
                         foreach(byte temperature in FanProgram[name].Level.Keys) {
 
@@ -758,6 +781,8 @@ namespace OmenMon.Library {
                             mnode.AppendChild(xml.CreateElement(XmlElementTempCpuReg)).InnerText = Conv.GetString((uint) p.TempCpuReg, 1, 10);
                         if(p.TempGpuReg != 0)
                             mnode.AppendChild(xml.CreateElement(XmlElementTempGpuReg)).InnerText = Conv.GetString((uint) p.TempGpuReg, 1, 10);
+                        if(p.FanLevelReleaseViaEc)
+                            mnode.AppendChild(xml.CreateElement(XmlElementFanLevelReleaseViaEc)).InnerText = "true";
                         mnode.AppendChild(xml.CreateElement(XmlElementModeReg)).InnerText          = Conv.GetString((uint) p.ModeReg, 1, 10);
                         mnode.AppendChild(xml.CreateElement(XmlElementSwitchReg)).InnerText        = Conv.GetString((uint) p.SwitchReg, 1, 10);
                     }

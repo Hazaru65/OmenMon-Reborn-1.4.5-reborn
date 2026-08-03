@@ -71,7 +71,18 @@ namespace OmenMon.AppGui {
                         Enum.Parse(typeof(BiosData.GpuPowerLevel), Config.GpuPowerDefault)));
 
             // Apply the default fan program,
-            // or the alternative program if no AC
+            // or the alternative program if no AC.
+            // The Auto program is a level-only curve for boards whose BIOS/EC
+            // won't run its own fan curve (RequiresAutoDrive, e.g. 8BD4); on
+            // other boards running it would just layer a custom curve over the
+            // BIOS's own Auto curve, so only start it where it is needed.
+            string defaultProgram = this.FullPower
+                ? Config.FanProgramDefault
+                : Config.FanProgramDefaultAlt;
+            if(defaultProgram == Config.FanProgramAuto
+                && !this.Platform.RequiresAutoDrive)
+                return;
+
             if(this.FullPower)
                 this.Program.Run(Config.FanProgramDefault);
             else
@@ -369,48 +380,58 @@ namespace OmenMon.AppGui {
             // Terminate any running fan program first
             this.Program.Terminate();
 
-            // Determine target fan mode (prefer selected GUI mode if available, fallback to hardware query)
-            BiosData.FanMode targetMode;
+            // Read the current hardware mode BEFORE clearing anything.
+            BiosData.FanMode currentMode;
             try {
-                if (Context.FormMain != null && !string.IsNullOrEmpty(Context.FormMain.SelectedFanMode)) {
-                    targetMode = (BiosData.FanMode) Enum.Parse(
-                        typeof(BiosData.FanMode),
-                        Context.FormMain.SelectedFanMode);
-                } else {
-                    targetMode = Platform.Fans.GetMode();
-                }
+                currentMode = Platform.Fans.GetMode();
             } catch {
-                targetMode = BiosData.FanMode.LegacyDefault;
+                currentMode = BiosData.FanMode.LegacyDefault;
             }
 
-            // Unconditionally re-enable fan if off (clears any hardware or level-based off latch)
+            // Re-enable fan if off (clears EC switch latch)
             try {
-                Platform.Fans.SetOff(false);
+                if(Platform.Fans.GetOff())
+                    Platform.Fans.SetOff(false);
             } catch { }
 
-            // Unconditionally disable maximum speed if active
+            // Disable maximum speed if active
             try {
-                Platform.Fans.SetMax(false);
+                if(Platform.Fans.GetMax())
+                    Platform.Fans.SetMax(false);
             } catch { }
 
-            // Clear custom speed settings
+            // Clear custom speed settings via BIOS WMI (overrides stale {0,0})
             try {
                 Platform.Fans.SetLevels(new byte[] { Byte.MaxValue, Byte.MaxValue });
             } catch { }
 
-            // Unconditionally disable manual fan mode to restore BIOS automatic control
-            try {
-                Platform.Fans.SetManual(false);
-            } catch { }
+            // Disable manual fan mode only on models that require it
+            if(Config.FanLevelNeedManual) {
+                try {
+                    Platform.Fans.SetManual(false);
+                } catch { }
+            }
 
-            // Reset countdown to zero so EC doesn't maintain stale constant-speed state
+            // Reset countdown to zero
             try {
                 Platform.Fans.SetCountdown(0);
             } catch { }
 
-            // Forcefully re-apply target fan mode so BIOS thermal curve latches
+            // Restore the fan mode that was actually active on the hardware
             try {
-                Platform.Fans.SetMode(targetMode);
+                Platform.Fans.SetMode(currentMode);
+            } catch { }
+
+            // On boards whose BIOS/EC won't run its own fan curve in Auto mode
+            // (RequiresAutoDrive, e.g. 8BD4), restart the Auto fan program so the
+            // revert actually leaves the fans temperature-driven instead of released
+            // but undriven (the original Auto-mode bug). Mirrors the Auto branch of
+            // EventActionFanSet: only when the Auto program exists and the board
+            // needs it; level-only so the restored mode above is preserved.
+            try {
+                if(Config.FanProgram.ContainsKey(Config.FanProgramAuto)
+                    && this.Platform.RequiresAutoDrive)
+                    this.Program.Run(Config.FanProgramAuto);
             } catch { }
 
             // Balloon notification
