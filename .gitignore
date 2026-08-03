@@ -13,3 +13,8 @@ OmenMon.exe.config
 docs/Belgeler - Kisayol.lnk
 # Stray backup (untracked)
 temp_old_main.cs
+# Local tooling / deployment copy
+v3.3/
+# Test project build outputs
+Tests/OmenMon.Tests/bin/
+Tests/OmenMon.Tests/obj/

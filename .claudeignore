@@ -27,3 +27,11 @@ OmenMon.exe.config
 
 # Wiki screenshots (binary)
 wiki/images/*.png
+
+# Local tooling / deployment copy (compiled binaries + giant ASCII XML docs
+# from .NET ref assemblies — pure noise for Claude)
+v3.3/
+
+# Test project build outputs (mirror Bin/Obj/)
+Tests/OmenMon.Tests/bin/
+Tests/OmenMon.Tests/obj/
