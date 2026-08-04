@@ -18,3 +18,12 @@ v3.3/
 # Test project build outputs
 Tests/OmenMon.Tests/bin/
 Tests/OmenMon.Tests/obj/
+
+# Local agent/tooling configs & planning docs (not project source)
+.claudeignore
+Claude.md
+GEMINI.md
+plan.md
+fixplan.md
+MODIFICATIONS.md
+CHECKLIST.md
