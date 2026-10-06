@@ -129,6 +129,16 @@ namespace OmenMon.AppGui {
             if(Config.AutoConfig)
                 this.Op.AutoConfigRun();
 
+            // On boards whose BIOS/EC will not run its own fan curve in Auto
+            // mode (RequiresAutoDrive, e.g. 8BD4), the level-only Auto program
+            // is the only thing that drives the fans: with it stopped the CPU
+            // level register stays latched and the fans sit at 0 RPM even at
+            // high temperature. Start it here so the default "Auto" state the
+            // GUI displays is actually in effect from the first timer tick.
+            // Skipped when AutoConfig already applied a program above.
+            else if(this.Op.Platform.RequiresAutoDrive)
+                this.Op.AutoDriveRun();
+
             // Register the power-mode change event handler
             SystemEvents.PowerModeChanged += EventPowerChange;
 

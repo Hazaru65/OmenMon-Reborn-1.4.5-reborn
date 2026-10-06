@@ -104,6 +104,28 @@ namespace OmenMon.AppGui {
 
         }
 
+        // Starts the level-only Auto fan program on boards whose BIOS/EC
+        // will not run its own fan curve (RequiresAutoDrive, e.g. 8BD4).
+        // Without it running nothing drives the fans and the CPU level
+        // register stays latched, so the default "Auto" state the GUI shows
+        // would not actually be in effect. Runs in another thread, like the
+        // automatic configuration above, so startup is not delayed.
+        public void AutoDriveRun() {
+
+            Thread autoDrive = new Thread(this.AutoDrive);
+            autoDrive.IsBackground = true;
+            autoDrive.Start();
+
+        }
+
+        // Starts the level-only Auto fan program, if defined
+        private void AutoDrive() {
+
+            if(Config.FanProgram.ContainsKey(Config.FanProgramAuto))
+                this.Program.Run(Config.FanProgramAuto);
+
+        }
+
         // Keeps updating the status as the fan program runs in the background
         public void FanProgramCallback(FanProgram.Severity severity, string message) {
 
