@@ -1,7 +1,6 @@
 # OmenMon-Reborn: Architecture Notes
 
-This document explains the design decisions behind the changes introduced in **OmenMon-Reborn**. It is aimed at contributors and anyone reviewing the code.
-
+This document explains the design decisions behind the changes introduced in **OmenMon-Reborn**. It is aimed at contributors and anyone reviewing the code. For user-facing wiki documentation and topic guides, see the [wiki](wiki/Architecture.md).
 ---
 
 ## Phase 3 — Dynamic Model Database
@@ -18,15 +17,16 @@ Three additions fix this:
 
 **`Config.Models`** (`Library/ConfigData.cs`) is a `Dictionary<string, PlatformPreset>` populated at startup from the `<Models>` section of `OmenMon.xml`. The XML schema mirrors the C# fields one-for-one, using decimal register values so they can be hand-edited without a hex calculator. `Config.SaveModel()` writes a preset back to XML through the existing `Config.Save()` path, so auto-detected entries are persisted automatically.
 
-**`Platform.InitFans()`** (`Hardware/Platform.cs`) now does a single dictionary lookup:
+**`Platform` initialization** (`Hardware/Platform.cs`) now resolves the model preset once in the constructor and shares it across `InitFans()` and `InitTemperature()`:
 
 ```csharp
-PlatformPreset preset = Config.Models.ContainsKey(product)
+string product = this.System.GetProduct();
+this.Preset = Config.Models.ContainsKey(product)
     ? Config.Models[product]
     : PlatformPreset.Default;
 ```
 
-All `FanArray` and `EcComponent` objects are then constructed from the preset's fields. The hardcoded `switch` is gone entirely. David's confirmed `8A14` device hits the `Default` path and behaves identically to before; a different device can now have its own entry in XML without any code change.
+All `FanArray` and `EcComponent` objects are then constructed using the preset's fields. The hardcoded `switch` is gone entirely. Confirmed standard devices hitting `PlatformPreset.Default` continue to behave identically to before, while any other device can define its own entry in `OmenMon.xml` without code changes.
 
 ---
 
@@ -38,8 +38,7 @@ EC registers `TNT2`–`TNT5` (0x47–0x4B) are auxiliary probes whose values are
 
 ### HVCI driver hint
 
-`Driver/Ring0.cs` already emitted a message when the WinRing0 kernel driver failed to load. The EC snapshot path in `CliOpProbe.cs` echoes that message including the phrase *"HVCI (Memory Integrity) active"*, directing users to the Windows Security → Core Isolation page — the most common cause of driver load failure on modern systems.
-
+WinRing0 was historically blocked by Windows Hypervisor-Protected Code Integrity (HVCI / Memory Integrity). With WinRing0 removed, ring-0 access is handled via PawnIO (`Driver/PawnIo.cs`). When PawnIO fails to load (e.g. `PawnIOLib.dll` is missing), `PawnIo.Open()` logs driver diagnostics (`"PawnIOLib.dll not found. Install PawnIO from https://pawnio.eu/ and restart OmenMon."`). In addition, the EC probe failure path in `App/Cli/CliOpProbe.cs` independently prints `"EC init failed — driver not loaded, access denied, or HVCI (Memory Integrity) active."`, alerting users when driver access or kernel code integrity prevents EC initialization.
 ---
 
 ## Phase 5 — Smart Fallback (Heuristic Auto-Detector)

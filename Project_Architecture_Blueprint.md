@@ -1,8 +1,8 @@
 # Project Architecture Blueprint: OmenMon-Reborn
 
-**Project:** OmenMon-Reborn (v1.4.0)  
+**Project:** OmenMon-Reborn (v1.6-reborn)  
 **Document Version:** 1.0.0  
-**Generated Date:** 2026-08-20  
+**Generated Date:** 2026-10-07  
 **Status:** Approved & Definitive Reference  
 **Technology Stack:** .NET Framework 4.8 / C# 11.0 / Windows Forms / PawnIO Kernel Sandbox / WMI (CIM)  
 **Primary Pattern:** Multi-Tier Layered Hardware Abstraction Architecture with Event-Driven Thermal Control, Safe Heuristic Auto-Detection, and Dual-Mode CLI/GUI Presentation  
@@ -43,10 +43,10 @@ Note on dependencies: OmenMon is **not** zero-install and has **no** zero extern
 |                     |                                              |                          |
 |                     v                                              v                          |
 |   +------------------------------------+    +---------------------------------------------+   |
-|   |      Embedded Controller (EC)      |    |               ACPI BIOS (WMI)               |   |
-|   |  - EmbeddedControllerAbstract / Impl|    |  - CimSession / hpqBIntM Class Interface    |   |
+|   |      Embedded Controller (EC)      |    |       ACPI BIOS (WMI) & GPU Watchdog        |   |
+|   |  - EmbeddedController (Hardware/Ec)|    |  - CimSession / hpqBIntM Class Interface    |   |
 |   |  - Global\Access_EC Mutex Lock     |    |  - BIOS Commands (0x20008, 0x20009, etc.)   |   |
-|   |  - Lock-Free Circular EcTrace      |    |  - Performance / GPU Mode & Backlight Ops   |   |
+|   |  - Lock-Free Circular EcTrace      |    |  - GPU Power Preset Enforcement & NVML      |   |
 |   +-----------------+------------------+    +----------------------+----------------------+   |
 |                     |                                              |                          |
 |                     v                                              v                          |
@@ -75,7 +75,7 @@ Note on dependencies: OmenMon is **not** zero-install and has **no** zero extern
 - **Presentation Layer:** Windows Forms (System.Windows.Forms) utilizing native GDI/GDI+ rendering with Per-Monitor DPI V2 awareness and Win32 message filters.
 - **Kernel-Mode Driver Bridge:** [PawnIO](https://pawnio.eu/) C ABI bridge (`PawnIOLib.dll`) executing the official **namazso-signed** `LpcACPIEC.bin` AMX module sandboxed inside kernel-space. The `PawnIO.sys` kernel driver itself is **Microsoft-signed** (which is what keeps Windows Defender quiet and allows HVCI compatibility); it only loads Pawn modules signed with the maintainer's RSA-2048 key, and the `LpcACPIEC` module is signed by namazso — it is **not** Microsoft-signed.
 - **Management Infrastructure:** Windows Management Instrumentation (WMI) via Common Information Model (CIM) managed interfaces (`Microsoft.Management.Infrastructure.dll`).
-- **Native Interoperability:** P/Invoke interop targeting `kernel32.dll`, `user32.dll`, `gdi32.dll`, `advapi32.dll`, `shcore.dll`, `mscms.dll`, `powrprof.dll`, and Task Scheduler 2.0 COM interfaces. (`External/ShellCore.cs` = `shcore.dll`, `External/ColorMgmt.cs` = `mscms.dll`; `External/Kernel.cs` additionally retains unused WinRing0-era `IOCTL_OLS_*` definitions as dead legacy surface — see §4.2.)
+- **Native Interoperability:** P/Invoke interop targeting `kernel32.dll`, `user32.dll`, `gdi32.dll`, `advapi32.dll`, `shcore.dll`, `mscms.dll`, `powrprof.dll`, `nvml.dll`, and Task Scheduler 2.0 COM interfaces. (`External/ShellCore.cs` = `shcore.dll`, `External/ColorMgmt.cs` = `mscms.dll`, `External/Nvml.cs` = `nvml.dll`, `External/WinBase.cs` = shared base structures like `SYSTEMTIME`; `External/Kernel.cs` additionally retains unused WinRing0-era `IOCTL_OLS_*` definitions as dead legacy surface — see §4.2.)
 - **Persistence & Storage:** XML serialization/deserialization via `System.Xml` (`OmenMon.xml`, `OmenMon-AutoCal.xml`), embedded resource extraction, and local flat crash dumps (`OmenMon-crash-*.log`, with `%LOCALAPPDATA%` fallback when the install directory is not writable). Managed side-by-side dependencies (NuGet packages such as `System.Memory`, `System.Collections.Immutable`, `System.Buffers`, `System.Runtime.CompilerServices.Unsafe`, `System.Reflection.Metadata`, `System.Formats.Nrbf`, `System.Resources.Extensions`) are copied into the output directory.
 - **Test Automation:** xUnit (net8.0 only, `Tests/OmenMon.Tests`) validating `OmenMon.xml` model-database invariants — required fields present and byte-parseable, optional byte elements, `ManualValueOn`/`ManualValueOff` pairing, unique `ProductId`s, and exactly-one-element shape. These are static XML data tests, not hardware integration tests.
 
@@ -106,7 +106,7 @@ Note on dependencies: OmenMon is **not** zero-install and has **no** zero extern
 │   ├── Cli/              # CLI verbs, command loop, task runner, and diagnostic formatters
 │   └── Gui/              # WinForms UI, system tray context, custom controls, and overlay
 ├── Driver/               # Kernel driver execution bridge (PawnIO wrapper and Ring0 facade)
-├── External/             # Win32 P/Invoke declarations and COM wrapper definitions
+├── External/             # Win32 P/Invoke declarations and COM wrappers (AdvApi, ColorMgmt, Gdi, Kernel, Nvml, PowrProf, ShellCore, TaskSchd, User, WinBase)
 ├── Hardware/             # Hardware Abstraction Layer (BIOS, EC, Platform, Fans, Presets)
 ├── Library/              # Configuration, XML engine, localization, EC trace, and WMI helpers
 │   └── Gui/              # Custom WinForms GDI rendering components
@@ -254,7 +254,15 @@ sequenceDiagram
   - `PawnIo`: Singleton engine wrapping native `PawnIOLib.dll`. Locates the library via the `HKLM\SOFTWARE\PawnIO\InstallDir` registry hint, falling back to `%ProgramFiles%\PawnIO` and `%ProgramFiles(x86)%\PawnIO` (side-by-side not required for the DLL — the PawnIO MSI installs it), pre-loads it with `LoadLibraryW`, then executes named routines (`ioctl_pio_read`, `ioctl_pio_write`) via `pawnio_execute`. If the library or module is missing, `Open()` logs an actionable status ("Install PawnIO from https://pawnio.eu/…") and the EC subsystem reports a non-fatal error.
   - `Ring0`: Legacy-compatible facade over `PawnIo`. Uses `[ThreadStatic]` `ulong[]` buffers (`_readIoIn`, `_readIoOut`) that are **not pinned** and are lazily allocated on first use per thread; on the re-entrant ("busy") path it allocates fresh temporary arrays instead. Dead MSR/PCI/Memory routines are maintained as no-op stubs for binary compatibility. `External/Kernel.cs` also retains unused WinRing0-era `IOCTL_OLS_*` definitions and `DeviceIoControl` as dead legacy surface — nothing calls them; all live ring-0 access goes through PawnIO.
 
-### 4.3 Embedded Controller Subsystem (`Hardware/Ec.cs`, `Hardware/EcMutex.cs`, `Hardware/EcDiffScanner.cs`)
+### 4.3 Native Interop & GPU Power Monitoring (`External/Nvml.cs`)
+- **Responsibility:** P/Invoke interop with the NVIDIA Management Library (`nvml.dll`, packaged with NVIDIA display drivers) to query actual enforced GPU power limits.
+- **Internal Structure:**
+  - Exposes `Nvml.GetEnforcedPowerLimitMilliwatts()` returning `uint?` (power ceiling in milliwatts, or `null` if NVML or a discrete GPU is unavailable).
+  - Utilizes `nvmlInit_v2`, `nvmlDeviceGetHandleByIndex_v2` (device index 0), and `nvmlDeviceGetEnforcedPowerLimit`.
+  - Implements lazy thread-safe one-time initialization with a cached device handle (`deviceHandle`).
+  - Note on driver limitations: `nvmlDeviceGetPowerManagementLimit` returns `ERROR_NOT_SUPPORTED` on mobile GeForce GPUs and is deliberately avoided in favor of `nvmlDeviceGetEnforcedPowerLimit`.
+
+### 4.4 Embedded Controller Subsystem (`Hardware/Ec.cs`, `Hardware/EcMutex.cs`, `Hardware/EcDiffScanner.cs`)
 - **Responsibility:** ACPI EC command/status handshake protocol implementation, concurrency locking, and scoring-based tachometer register discovery.
 - **Internal Structure:**
   - `IEmbeddedController`: Contract defining byte/word read/write and explicit mutex `Request(int timeout)` / `Release()` methods. **The public read/write methods (`ReadByte`/`WriteByte`/`ReadWord`/`WriteWord`) do not acquire the lock internally** — callers must hold it (the normal path is `Hw.EcExec`, which acquires the mutex around the callback). Third-party processes coordinating with OmenMon must use the same named mutex.
@@ -263,29 +271,29 @@ sequenceDiagram
   - `EmbeddedControllerMutex`: System-wide mutex (`Global\Access_EC`) configured with a DACL granting `WorldSid` full control for cross-process synchronization; opened with `Config.EcMutexTimeout = 200` ms waits.
   - `EcDiffScanner`: **Scoring-based heuristic scanner**, not a regression engine. It compares EC dumps taken across fan-speed steps, scores every register candidate with a monotonicity measure (allowing one minor inversion for sensor jitter) plus a swing bonus, and returns the top two candidates ranked by score (CPU = lower offset). It recognizes three EC encodings: 16-bit little-endian RPM (`LittleEndian16`), 8-bit period-encoded (`PeriodEncoded8`), and 8-bit direct-multiplier (`DirectMultiplier8`, byte × 100 RPM). A fourth mode, `BiosLevelMirror`, is **not produced by the scanner** — it is a separate built-in mapping used for boards with no usable EC tachometer (e.g. 8C9C), where `Fan.GetSpeed()` reads the BIOS-reported fan level × multiplier instead.
 
-### 4.4 ACPI BIOS Subsystem (`Hardware/Bios.cs`, `Hardware/BiosCtl.cs`, `Hardware/BiosData.cs`)
+### 4.5 ACPI BIOS Subsystem (`Hardware/Bios.cs`, `Hardware/BiosCtl.cs`, `Hardware/BiosData.cs`)
 - **Responsibility:** Manages WMI/CIM communication with the proprietary HP BIOS interface (`hpqBIntM`).
 - **Internal Structure:**
   - `IBios` / `Bios`: Manages a `CimSession` in namespace `root\wmi`. Uses the method class `hpqBIntM` (instance `ACPI\PNP0C14\0_0`) and input data class `hpqBDataIn`, invoking `hpqBIOSInt<size>` methods with a binary payload prefixed by the shared secret signature — bytes `0x53 0x45 0x43 0x55` = `"SECU"`. Return codes are unmarshalled from `rwReturnCode`; client-side failures return −1.
   - `BiosCtl`: High-level service exposing typed methods for performance presets (Default, Performance, Cool), GPU switching (Hybrid, Discrete), keyboard backlight control, and fan speed thresholds.
   - **Omen-key events are separate from BIOS calls:** the physical Omen key is captured by a Task Scheduler task with a WMI event trigger on class `hpqBEvnt` in `root\wmi` (`SELECT * FROM hpqBEvnt WHERE eventData = 8613 AND eventId = 29`), which launches `OmenMon.exe -Run Key` (see §8). `WmiEvent` (namespace `root\subscription`; `__EventFilter`, `CommandLineEventConsumer`, `__FilterToConsumerBinding`) is used only to create/remove those triggers, while `WmiInfo` reads `Win32_BaseBoard` in `root\cimv2` for the product ID.
 
-### 4.5 Platform & Hardware Abstraction (`Hardware/Platform.cs`, `Hardware/PlatformPreset.cs`, `Hardware/AutoDetector.cs`)
-- **Responsibility:** Encapsulates the complete hardware model of the running laptop, dynamically resolving EC register layouts.
+### 4.6 Platform & Hardware Abstraction (`Hardware/Platform.cs`, `Hardware/PlatformPreset.cs`, `Hardware/Settings.cs`, `Hardware/AutoDetector.cs`)
+- **Responsibility:** Encapsulates the complete hardware model of the running laptop, dynamically resolving EC register layouts and managing BIOS settings caching.
 - **Internal Structure:**
   - `Platform`: Hardware root aggregating `System` (`Settings`), `Fans` (`FanArray`), and `Temperature` (`IPlatformReadComponent[]`).
+  - `Settings`: Caches the BIOS GPU power structure (`this.GpuPower`). `SetGpuPower()` updates this cached state immediately upon applying the new value, ensuring subsequent cached reads via `GetGpuCustomTgp()` or `GetGpuPpab()` cannot report a value that firmware might revert without detection.
   - `PlatformPreset`: Plain data container defining every EC register offset for a specific board ID (`SRP1`/`SRP2` fan levels, `XGS1`/`XGS2` rate read, `XSS1`/`XSS2` rate write, `RPM1`/`RPM3` tachometer, `XFCD` countdown, `OMCC` manual gate, `HPCM` mode, `SFAN` off switch) plus optional per-model overrides: `ManualValueOn`/`ManualValueOff` (non-legacy OMCC trigger values), `TempCpuReg`/`TempGpuReg` (sensor remaps), and `FanLevelReleaseViaEc` (write the 0xFF release sentinel directly to EC level registers after the BIOS call).
   - `AutoDetector`: Safe read-only heuristic classifier (`DetectHeuristic`). Analyzes a 256-byte EC dump against known physical invariants (e.g. `CPUT` at `0x57` in [20..95] °C vs. `0xFF` on 2023+ boards) without performing any hardware writes.
 
-### 4.6 Presentation & Coordination Subsystem (`App/Gui/*`, `App/Cli/*`)
+### 4.7 Presentation & Coordination Subsystem (`App/Gui/*`, `App/Cli/*`)
 - **GUI Engine (`App/Gui/`):**
-  - `GuiTray`: Main message loop host running as an `ApplicationContext`. Controls tray icon rendering, dynamic taskbar icon temperature painting, and context menus.
+  - `GuiTray`: Main message loop host running as an `ApplicationContext`. Controls tray icon rendering, dynamic taskbar icon temperature painting, and context menus. Implements the GPU power watchdog: while the fan-mode selector is on Auto or Const, it reads `Platform.System.GetGpuPower(true)` and re-asserts `BiosData.GpuPowerLevel.Maximum` on the `Config.FanConstReapplyInterval` cadence. Gated on `FormMain != null && (IsAutoMode || IsConstMode)`; because the form is created lazily, the watchdog is inert in tray-only sessions.
   - `GuiOp`: Core GUI controller. Drives timer update loops, fan safety verification, RGB preset cycling, and hardware synchronization.
   - `GuiFormOverlay`: Borderless, topmost, transparent (`WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`) HUD overlay providing non-intrusive thermal emergency warnings during full-screen gaming.
   - `GuiFormCalibration`: Modal Auto-Calibration Wizard (`Auto-Calibrate & Diagnose…` tray menu item). Owns the background calibration task (engine: `CliOp.AutoCalibrate`), streams progress, and on success applies the result as a live override, writes `OmenMon-AutoCal.xml`, saves a Markdown report, copies it to the clipboard, and optionally opens the GitHub issue page in the default browser. Supported by `GuiCalibrationProcessGuard`, which temporarily drops priorities of heavy background tasks.
 - **CLI Engine (`App/Cli/`):**
   - `Cli` / `CliOp`: Command line processor with a context dispatcher supporting verbs `-Bios`, `-Ec`, `-EcMon`, `-Prog`, `-Task`, `-Probe`, `-Diag`, `-Run` (headless task runner) and help options (`-h`, `-?`, `-help`, `--help`, `-usage`, `--usage`). **There is no `-Fan` or `-Calibrate` verb** — fan control is handled by `-Bios`/`-Prog`/`-Ec` sub-operations, and fan calibration is GUI-only (`GuiFormCalibration`; the `CliOpCalibration` engine is invoked by the form, not by a CLI verb). The first CLI instance relaunches in-process (PE subsystem patch + `Assembly.Load`); secondary instances attach to the parent console and run `CliOp.Loop`.
-
 ---
 
 ## 5. Architectural Layers and Dependencies
@@ -344,11 +352,18 @@ The primary configuration is serialized in human-readable XML. The root element 
     <BiosErrorReporting>true</BiosErrorReporting>
     <BiosHeartbeatPauseOnBattery>true</BiosHeartbeatPauseOnBattery>
     <TemperatureUseFahrenheit>false</TemperatureUseFahrenheit>
+    <!-- Thermal Panic Mode: force max fans + balloon alert when threshold is reached -->
+    <ThermalPanicEnabled>false</ThermalPanicEnabled>
+    <ThermalPanicTemperature>90</ThermalPanicTemperature>
+    <ThermalPanicHysteresis>5</ThermalPanicHysteresis>
     <EcFailLimit>15</EcFailLimit>
     <EcMonInterval>1000</EcMonInterval>
     <EcMutexTimeout>200</EcMutexTimeout>
     <EcRetryLimit>3</EcRetryLimit>
     <EcWaitLimit>30</EcWaitLimit>
+    <!-- Re-apply constant fan speed periodically to prevent BIOS override -->
+    <FanConstReapplyEnabled>false</FanConstReapplyEnabled>
+    <FanConstReapplyInterval>5</FanConstReapplyInterval>
     <FanLevelMax>55</FanLevelMax>
     <FanLevelMin>20</FanLevelMin>
     <FanLevelNeedManual>false</FanLevelNeedManual>
@@ -363,7 +378,7 @@ The primary configuration is serialized in human-readable XML. The root element 
     <Temperature>
       <Sensor Name="CPUT" Source="EC" />
       <Sensor Name="GPTM" Source="EC" />
-      <Sensor Name="BIOS" Source="BIOS" Use="true" />
+      <Sensor Name="BIOS" Source="BIOS" />
       <Sensor Name="TNT2" Source="EC" Use="false" />
     </Temperature>
     <Models>
@@ -372,8 +387,8 @@ The primary configuration is serialized in human-readable XML. The root element 
         <FanLevelReg1>53</FanLevelReg1>       <!-- SRP2: 0x35 -->
         <FanRateReadReg0>46</FanRateReadReg0> <!-- XGS1: 0x2E -->
         <FanRateReadReg1>47</FanRateReadReg1> <!-- XGS2: 0x2F -->
-        <FanRateWriteReg0>58</FanRateWriteReg0><!-- XSS1: 0x3A -->
-        <FanRateWriteReg1>59</FanRateWriteReg1><!-- XSS2: 0x3B -->
+        <FanRateWriteReg0>44</FanRateWriteReg0><!-- XSS1: 0x2C -->
+        <FanRateWriteReg1>45</FanRateWriteReg1><!-- XSS2: 0x2D -->
         <FanSpeedReg0>176</FanSpeedReg0>      <!-- RPM1: 0xB0 -->
         <FanSpeedReg1>178</FanSpeedReg1>      <!-- RPM3: 0xB2 -->
         <CountdownReg>99</CountdownReg>       <!-- XFCD: 0x63 -->
@@ -388,10 +403,10 @@ The primary configuration is serialized in human-readable XML. The root element 
 
 Notes on the real schema:
 - Required per-model elements: `FanLevelReg0/1`, `FanRateReadReg0/1`, `FanRateWriteReg0/1`, `FanSpeedReg0/1`, `CountdownReg`, `ManualReg`, `ModeReg`, `SwitchReg`.
-- Optional per-model elements: `ManualValueOn`/`ManualValueOff` (must appear together), `TempCpuReg`, `TempGpuReg`, `FanLevelReleaseViaEc` (used on specific boards such as 8BD4).
+- Optional per-model elements: `ManualValueOn`/`ManualValueOff` (must appear together), `TempCpuReg`, `TempGpuReg`, `FanLevelReleaseViaEc` (a boolean flag, used on specific boards such as 8BD4 where direct EC release is required).
 - Temperature sensors use `Source="EC"` or `Source="BIOS"` plus an optional `Use="false"` to disable; there is **no `Register` attribute** — EC sensor offsets come from the model preset.
-- `FanConstSafetyEnabled`/`FanConstSafetyTemp` are read if present; the code defaults are `false` and `85`.
-
+- Default divergence between code and shipped configuration: in `Library/ConfigData.cs`, properties like `AutoStartup`, `GuiDynamicIcon`, `GuiStayOnTop`, and `KeyToggleColorPreset` default to `false`. However, the shipped `bin/OmenMon.xml` distribution defaults them to `true`.
+- `FanConstSafetyEnabled`/`FanConstSafetyTemp`, `ThermalPanic*` (`ThermalPanicEnabled`, `ThermalPanicTemperature`, `ThermalPanicHysteresis`), and `FanConstReapply*` (`FanConstReapplyEnabled`, `FanConstReapplyInterval`) are read if present. Code defaults for `FanConstSafetyEnabled`, `ThermalPanicEnabled`, and `FanConstReapplyEnabled` are `false`.
 ### 6.2 Auto-Calibration Sidecar Schema (`OmenMon-AutoCal.xml`)
 Tachometer configurations discovered by the calibration wizard are stored in a sidecar file (`OmenMon-AutoCal.xml`, next to the executable). The sidecar is a **live override for the running session plus a persisted hint for the next launch** — it is *not* inserted into the model database and no preset is auto-published. The root element is `<AutoCalibration>` (note: not `<AutoCal>`), stamped with the baseboard `ProductId`; each fan is a self-closing element with lowercase `offset` (hex `0x…` or decimal) and `mode` attributes (exact `EcDiffScanner.Mode` member names).
 
@@ -439,7 +454,7 @@ Tachometer configurations discovered by the calibration wizard are stored in a s
 | **App -> PawnIO Driver** | P/Invoke (`pawnio_execute`) | Sized binary arrays (`ulong[]`) | Kernel-mode EC port read/write |
 | **App -> ACPI BIOS** | WMI / CIM Session | `hpqBIntM` method calls | Performance mode, GPU mode, backlight control |
 | **GUI -> GUI (Instance 2)** | Windows Message Broadcast | `RegisterWindowMessage("WM_OMENMON_FOCUS")` | Restores window or toggles UI on Omen key tap / second launch |
-| **OS -> App (Omen Key)** | Task Scheduler WMI event trigger | `SELECT * FROM hpqBEvnt WHERE eventData = 8613 AND eventId = 29` (namespace `root\wmi`), launches `OmenMon.exe -Run Key` | Detects physical Omen key presses |
+| **OS -> App (Omen Key)** | WMI Event Filter -> Consumer -> Task Scheduler | WMI event filter on `hpqBEvnt` (`eventData = 8613 AND eventId = 29` in `root\wmi`) -> `CommandLineEventConsumer` invokes `schtasks.exe /run /tn "OmenMon Key"` -> launches `OmenMon.exe -Run Key` | Detects physical Omen key presses |
 | **CLI Relaunch** | In-process `Assembly.Load` + PE subsystem patch (`IMAGE_SUBSYSTEM_WINDOWS_CUI`) | Re-enters `Main` with the same args; env-var handshake (`OMENMON` = `Quiet`/`Key`) used by spawned GUI instances | No second process is created; `RestorePrompt` re-issues a synthetic Enter after CLI exit |
 | **Task Scheduler -> App** | COM Automation (`TaskSchd.cs`) | Executable CLI arg `-Run` (`-Run Gui` / `-Run Key` / `-Run Mux`) | Headless execution: auto-start GUI, Omen-key handling, Advanced Optimus mux fix |
 
@@ -448,8 +463,9 @@ Tachometer configurations discovered by the calibration wizard are stored in a s
 ## 9. Technology-Specific Implementation Patterns
 
 ### 9.1 WinForms & GDI Subsystem
-- **Double Buffered Rendering:** Custom controls (`ProgressBarEx`, `ButtonEx`) inherit from WinForms base controls and enable `OptimizedDoubleBuffer` and `AllPaintingInWmPaint` to prevent flicker during 1-second refresh cycles.
+- **Double Buffered Rendering:** Custom control `ProgressBarEx` enables `ControlStyles.OptimizedDoubleBuffer`, `ControlStyles.AllPaintingInWmPaint`, and `ControlStyles.UserPaint` to eliminate flicker during refresh cycles (`ButtonEx` implements custom GDI path highlighting with explicit `Invalidate()` repainting and does not set double buffering).
 - **Non-Activating Overlays:** `GuiFormOverlay` overrides `CreateParams` and `ShowWithoutActivation` to ensure in-game thermal alerts do not capture keyboard focus or disrupt active full-screen DirectX/Vulkan contexts.
+- **System Status Panel (`GuiFormMain` & `GuiFormMainInit`):** The system status panel (`UpdateSys`, `UpdateSysMsg`, `UpdateSysRtf`) renders a four-line RichTextBox (`RtfSysInfo`): hardware/adapter info, GPU state ending with live wattage from NVML (`nvmlDeviceGetEnforcedPowerLimit`), fan/status message line, and a final version line `v<Config.AppVersion>`. Layout geometry accommodates the extra 14 px line: `GrpSys` expanded from 287x65 to 287x79, `RtfSysInfo` expanded from 277x43 to 277x57, `GrpKbd` relocated from Y=68 to Y=82, and `LnkAbout` shifted from Y=300 to Y=314, preserving the overall form height.
 
 ### 9.2 Reduced-Allocation I/O Fast-Path
 To minimize garbage-collector churn during periodic hardware polling, `Driver/Ring0.cs` reuses thread-local static buffers. **They are not pinned and not pre-allocated**: they are lazily allocated on first use per thread, and the re-entrant ("busy") path allocates fresh temporary arrays, so a small amount of allocation can still occur on busy paths:
@@ -582,14 +598,38 @@ private void RevertToAuto() {
 [Theory]
 [MemberData(nameof(KnownModels))]
 public void KnownModel_HasRequiredFields_WithDetailedErrors(string productId, string displayName, XElement model) {
-    foreach (string element in RequiredRegisterElements) {
-        XElement node = model.Element(element);
-        Assert.True(node != null, $"Model [{productId}] is missing required element <{element}>.");
+    var errors = new List<string>();
+    var tag = ModelTag(model);
 
-        bool parsed = byte.TryParse(node.Value, NumberStyles.Integer,
-            CultureInfo.InvariantCulture, out _);
-        Assert.True(parsed, $"Element <{element}> in model [{productId}] must be a valid byte.");
+    if(string.IsNullOrWhiteSpace(productId))
+        errors.Add($"[{tag}] Missing or empty ProductId attribute.");
+    if(string.IsNullOrWhiteSpace(displayName))
+        errors.Add($"[{tag}] Missing or empty DisplayName attribute.");
+
+    foreach(var elementName in RequiredRegisterElements) {
+        var node = model.Element(elementName);
+        if(node is null) {
+            errors.Add($"[{tag}] Missing required <{elementName}> element.");
+            continue;
+        }
+
+        if(!byte.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            errors.Add($"[{tag}] <{elementName}> has invalid byte value '{node.Value}'.");
     }
+
+    foreach(var elementName in OptionalByteElements) {
+        var node = model.Element(elementName);
+        if(node is not null && !byte.TryParse(node.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            errors.Add($"[{tag}] Optional <{elementName}> has invalid byte value '{node.Value}'.");
+    }
+
+    var manualOnPresent = model.Element("ManualValueOn") is not null;
+    var manualOffPresent = model.Element("ManualValueOff") is not null;
+    if(manualOnPresent != manualOffPresent)
+        errors.Add($"[{tag}] Manual override is incomplete: ManualValueOn and ManualValueOff must be specified together.");
+
+    Assert.True(errors.Count == 0,
+        $"Model validation failed for ProductId='{productId}', DisplayName='{displayName}'.{Environment.NewLine}{string.Join(Environment.NewLine, errors)}");
 }
 ```
 
@@ -600,38 +640,38 @@ public void KnownModel_HasRequiredFields_WithDetailedErrors(string productId, st
 - **Prerequisite — PawnIO package:** The Microsoft-signed `PawnIO.sys` kernel driver and `PawnIOLib.dll` come from the PawnIO installer (https://pawnio.eu/). The MSI places `PawnIOLib.dll` in `C:\Program Files\PawnIO` and registers the driver service; OmenMon runs as administrator (`requireAdministrator` manifest).
 - **Packaging:** Single-directory distribution containing `OmenMon.exe`, `OmenMon.xml`, managed side-by-side assemblies (NuGet packages copied to the output), and the embedded `OmenMon.LpcACPIEC.bin` module (a side-by-side `LpcACPIEC.bin` next to the executable overrides the embedded copy).
 - **PawnIO Library Resolution:** On startup, `Driver/PawnIo.cs` resolves `PawnIOLib.dll` by (1) reading the `HKLM\SOFTWARE\PawnIO\InstallDir` registry value set by the installer, then (2) probing `%ProgramFiles%\PawnIO\PawnIOLib.dll` and `%ProgramFiles(x86)%\PawnIO\PawnIOLib.dll`, and finally pre-loads it via `LoadLibraryW` so `[DllImport]` resolves. A missing library/module is reported with an actionable message ("Install PawnIO from https://pawnio.eu/ and restart OmenMon") and the EC subsystem degrades gracefully.
-- **Windows Task Scheduler Integration:** `CliOpTask.cs`/`Hw.TaskSet` create and remove three scheduled tasks via Task Scheduler 2.0 COM (`External/TaskSchd.cs`): `OmenMon` (auto-start GUI at logon → `-Run Gui`), `OmenMon Key` (WMI event trigger on `hpqBEvnt` → `-Run Key`), and `OmenMon Mux` (registry `RegistryValueChangeEvent` on the nVidia Advanced Optimus `InternalMuxState` key → `-Run Mux`). The WMI event triggers use `WmiEvent` (`root\subscription`).
+- **Windows Task Scheduler Integration:** `CliOpTask.cs`/`Hw.TaskSet` register and manage three tasks via Task Scheduler 2.0 COM (`External/TaskSchd.cs`): `OmenMon` (auto-start GUI at logon → `-Run Gui`), `OmenMon Key` (Omen key event), and `OmenMon Mux` (nVidia Advanced Optimus mux fix). For event-driven tasks, OmenMon configures WMI infrastructure using `WmiEvent` (`root\subscription`): an `__EventFilter` binds to a `CommandLineEventConsumer` (`wmiEvent.CreateConsumer`), which invokes `schtasks.exe /run /tn "<TaskName>"` (`Config.TaskRunPath` + `Config.TaskRunArgs`) upon detecting WMI triggers (`hpqBEvnt` in `root\wmi` for `OmenMon Key`, `RegistryValueChangeEvent` in `root\default` on the `InternalMuxState` key for `OmenMon Mux`), triggering the corresponding `-Run Key` or `-Run Mux` headless handler.
 - **Crash Logs:** `OmenMon-crash-*.log` is written next to the executable, with a `%LOCALAPPDATA%` fallback when the directory is read-only (e.g. Program Files without elevation).
+- **Version Metadata & Build Pipeline:** Version constants are stored in `All/Version.cs` (`[assembly: AssemblyVersion("1.6.0.0")]`, `[assembly: AssemblyFileVersion("1.6.0.0")]`, `[assembly: AssemblyInformationalVersion("1.6-reborn")]`). The project file `OmenMon.csproj` has no static assembly version properties; instead, it defines an MSBuild `AddVersion` target that runs before compilation only when `$(AssemblyVersion)` and `$(AssemblyVersionWord)` properties are explicitly passed via the build environment. In local builds without those parameters, the compiler uses the literals defined in `All/Version.cs`.
 
 ---
 
 ## 13. Architectural Decision Records (ADRs)
 
 ### ADR-001: Migration from WinRing0 to PawnIO Kernel Sandbox
-- **Context:** WinRing0 triggered Microsoft Defender heuristic blocks, was incompatible with Windows 11 HVCI (Memory Integrity), and presented kernel-level vulnerabilities (CVE-2020-14979).
-- **Decision:** Replace WinRing0 with PawnIO. Embed the official **namazso-signed** `LpcACPIEC.bin` module (signed with the maintainer's RSA-2048 key, loadable by the Microsoft-signed production `PawnIO.sys` driver) directly into the executable assembly.
-- **Consequences:** Improves Windows 11 compatibility and avoids the known WinRing0-specific Defender heuristic blocks and HVCI incompatibility, but does not guarantee the absence of security warnings (Defender and other AV behavior can change independently of OmenMon). Restricts kernel I/O strictly to ACPI ports `0x62`/`0x66`. Requires the PawnIO package to be installed (driver service + `PawnIOLib.dll`).
+- **Context:** WinRing0 triggered Defender heuristic blocks, failed under Windows 11 HVCI, and contained known vulnerabilities (CVE-2020-14979).
+- **Decision:** Replace WinRing0 with PawnIO using the official namazso-signed `LpcACPIEC.bin` module sandboxed strictly to EC ports `0x62`/`0x66`.
+- **Consequences:** Eliminates legacy WinRing0 attack surface and provides HVCI compatibility on modern Windows; requires the PawnIO package runtime.
 
 ### ADR-002: Dynamic Model Database Architecture
-- **Context:** Hardcoded `switch` statements caused unrecognised laptop models to inherit incorrect EC register layouts, resulting in fans locking at 100% or incorrect thermal monitoring.
-- **Decision:** Introduce `PlatformPreset` data models populated dynamically from `<Models>` in `OmenMon.xml`, falling back to compile-time defaults only when necessary.
-- **Consequences:** Eliminates hardcoded switch logic; enables adding support for new laptop models via simple XML entries without recompilation.
+- **Context:** Static motherboard switch blocks led to unrecognised devices latching incorrect EC offsets or 100% fan lockups.
+- **Decision:** Dynamic `PlatformPreset` configurations driven by `<Models>` in `OmenMon.xml`.
+- **Consequences:** Community models are added or modified via XML entries without binary recompilation.
 
 ### ADR-003: Heuristic Auto-Detection & Sidecar Calibration
-- **Context:** Users on unsupported models required technical tools (e.g. RWEverything) to identify tachometer registers.
-- **Decision:** Implement safe read-only heuristic scanning (`AutoDetector`) and a scoring-based automated stress calibration wizard (`EcDiffScanner`) whose result is applied as a live override and persisted to `OmenMon-AutoCal.xml`.
-- **Consequences:** Non-technical users can automatically calibrate fan monitoring. Calibration does **not** publish presets to the model database automatically — the wizard saves a Markdown report, copies it to the clipboard, and hands off to the browser so the user can open a GitHub issue with the data. Community contribution is a manual step.
+- **Context:** New hardware required manual EC reverse-engineering with third-party tools to find tachometer registers.
+- **Decision:** Read-only `AutoDetector` invariant testing paired with `EcDiffScanner` multi-step differential analysis persisted to `OmenMon-AutoCal.xml`.
+- **Consequences:** Automated local calibration generates actionable data; community contributions remain an intentional manual user submission.
 
 ### ADR-004: Thermal Safety Auto-Revert & HUD Overlay
-- **Context:** Fixed manual fan speeds could result in severe thermal throttling or hardware damage if left active under heavy gaming loads.
-- **Decision:** Build an **optional** safety monitor (**disabled by default**) that, when the maximum temperature reaches the configured threshold (`FanConstSafetyTemp`, default 85 °C) while a constant manual fan mode is active, reverts to the previously active fan mode (not an unconditional Auto) and alerts the user via a non-intrusive topmost overlay.
-- **Consequences:** Mitigates thermal risk from forgotten manual overrides but provides **no guarantee of protection from damage** — it is a best-effort heuristic dependent on sensor validity, configuration, and the safety check cadence (~3 s). Full-screen gaming immersion is preserved by the non-activating overlay.
+- **Context:** Fixed manual fan speeds risk thermal throttling or component stress if left running unattended under high system load.
+- **Decision:** Opt-in background monitor reverting to the prior fan mode at the safety threshold with a non-activating topmost HUD alert.
+- **Consequences:** Best-effort fail-safe protection without disrupting full-screen games or stealing input focus.
 
 ### ADR-005: Zero-Telemetry Local Diagnostic Engine & Trace Buffer
-- **Context:** Intermittent fan spikes and hardware lockups were difficult to diagnose without user logs.
-- **Decision:** Implement a 1024-entry lock-free circular buffer (`EcTrace`) and automated local crash dumper (`Crash.cs`) generating Markdown bug reports locally.
-- **Consequences:** Provides comprehensive diagnostics for GitHub issue reporting. The application performs **no network I/O of its own** — reports are handed off manually via clipboard and browser — so offline privacy holds by construction of the code (an implementation property, not a contractual guarantee).
-
+- **Context:** Transient hardware regressions and fan spikes were difficult to debug without runtime logs.
+- **Decision:** 1024-slot circular in-memory `EcTrace` buffer and offline Markdown crash dumper.
+- **Consequences:** High-fidelity hardware forensic logs without remote telemetry, network sockets, or background network I/O.
 ---
 
 ## 14. Architecture Governance & Developer Guidelines
