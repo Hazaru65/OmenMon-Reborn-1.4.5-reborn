@@ -1,27 +1,52 @@
+# Visual Studio / build outputs
 .vs/
-.claude/
 Bin/
 Obj/
 bin/
 obj/
-OmenMon.manifest
-OmenMon.resx
+
+# NOT ignored on purpose: these are build inputs and must stay tracked.
+#   OmenMon.manifest  - <ApplicationManifest> + <None Include> in OmenMon.csproj
+#   OmenMon.resx      - <EmbeddedResource>, source of the strongly-typed
+#                       OmenMon.Resources class used throughout the GUI/CLI
+# Ignoring them left a fresh clone unable to compile.
+
+# Generated at build time from AutoGenerateBindingRedirects
 OmenMon.exe.config
+
 # Local .NET SDK (714 MB / 5000+ files)
 .sdk/
+
 # Windows shortcut
 docs/Belgeler - Kisayol.lnk
-# Stray backup (untracked)
-temp_old_main.cs
+
 # Local tooling / deployment copy
 v3.3/
+
+# Throwaway build and verification output
+VerifBuild/
+
+# Scratch diagnostics written to the repo root by tooling and agents
+_*.cmd
+_*.ps1
+_*.png
+_*.csv
+_*.txt
+
+# Stray backups of source files
+*.bak
+temp_old_main.cs
+
 # Test project build outputs
 Tests/OmenMon.Tests/bin/
 Tests/OmenMon.Tests/obj/
 
 # Local agent/tooling configs & planning docs (not project source)
+.claude/
 .claudeignore
 Claude.md
+CLAUDE.md
+claude.md
 GEMINI.md
 plan.md
 fixplan.md
