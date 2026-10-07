@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **Auto and Constant fan modes never enforced the GPU power preset.** Both paths deliberately leave GPU power alone — the `Auto` fan program is `LevelOnly`, and the Constant re-apply block writes only fan levels — so once firmware reverted the preset to `CustomTgp=Off` (observed on a Victus 16 8BD4 whose hall-effect sensor daughterboard was unplugged) the GPU stayed pinned to its ~90 W fallback ceiling with nothing to correct it. While the fan mode selector is on **Auto** or **Const**, OmenMon now re-asserts the `Maximum` GPU power preset on the existing `FanConstReapply` cadence, writing only when the current preset differs, so the redundant WMI write is avoided. The `Auto` fan program's own `GpuPower` value in `OmenMon.xml` is corrected from `Minimum` to `Maximum` for consistency. `Silent` and `Power` program behaviour, and all fan mode/level behaviour, are unchanged.
 
+### Added
+
+- **Live GPU power limit in the System Status panel.** The GPU line ("System Status & Information") now ends with the currently enforced GPU power limit in watts, e.g. `cTGP PPAB 117W`, refreshed on the existing monitor cadence. The value is read through NVML (`nvml.dll`, shipped with the display driver) with `nvmlDeviceGetEnforcedPowerLimit`, so it tracks whatever the active preset actually yields — 80 W on Silent, up to 120 W on Power — rather than the requested preset. When NVML or a discrete GPU is unavailable the segment is omitted entirely, with no placeholder.
+
 ## [1.4.5-reborn] - 2026-08-03
 
 ### Fixed

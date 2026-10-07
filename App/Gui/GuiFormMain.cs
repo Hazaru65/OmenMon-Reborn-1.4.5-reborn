@@ -1037,7 +1037,11 @@ namespace OmenMon.AppGui {
                 + Conv.RTF_CF1 + Config.Locale.Get(
                     Config.L_GUI_MAIN + Gui.G_SYS + "Throttling"
                         + Enum.GetName(typeof(BiosData.Throttling),
-                    Context.Op.Platform.System.GetThrottling())) + Conv.RTF_LINE
+                    Context.Op.Platform.System.GetThrottling()))
+                + (Nvml.GetEnforcedPowerLimitMilliwatts() is uint mw && mw > 0 ?
+                    " " + Conv.RTF_CF5 + (mw / 1000).ToString()
+                    + Conv.RTF_CF1 + Config.Locale.Get(Config.L_UNIT + "Power")
+                    : "") + Conv.RTF_LINE
                 + Conv.RTF_CF2;
 
             // Apply the update
