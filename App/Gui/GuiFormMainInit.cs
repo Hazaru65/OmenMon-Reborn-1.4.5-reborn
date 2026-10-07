@@ -547,7 +547,7 @@ namespace OmenMon.AppGui {
             this.GrpKbd.Controls.Add(this.TxtKbdColorVal);
 
             // Keyboard group settings
-            this.GrpKbd.Location = new Point(6, 68);
+            this.GrpKbd.Location = new Point(6, 82);
             this.GrpKbd.Name = Gui.T_GRP + Gui.G_KBD;
             this.GrpKbd.Size = new Size(405, 205);
             this.GrpKbd.TabIndex = 2;
@@ -567,7 +567,7 @@ namespace OmenMon.AppGui {
             this.RtfSysInfo.ReadOnly = true;
             this.RtfSysInfo.ScrollBars = RichTextBoxScrollBars.None;
             this.RtfSysInfo.ShortcutsEnabled = false;
-            this.RtfSysInfo.Size = new Size(277, 43);
+            this.RtfSysInfo.Size = new Size(277, 57);
             this.RtfSysInfo.TabIndex = 0;
             this.RtfSysInfo.TabStop = false;
             this.RtfSysInfo.WordWrap = false;
@@ -583,7 +583,7 @@ namespace OmenMon.AppGui {
             // System status group settings
             this.GrpSys.Location = new Point(6, 3);
             this.GrpSys.Name = Gui.T_GRP + Gui.G_SYS;
-            this.GrpSys.Size = new Size(287, 65);
+            this.GrpSys.Size = new Size(287, 79);
             this.GrpSys.TabIndex = 0;
             this.GrpSys.TabStop = false;
             this.GrpSys.Text = Config.Locale.Get(Config.L_GUI_MAIN + Gui.G_SYS).Replace("&", "&&");
@@ -781,7 +781,7 @@ namespace OmenMon.AppGui {
 
             // Link to open About dialog
             this.LnkAbout.AutoSize = true;
-            this.LnkAbout.Location = new Point(10, 300);
+            this.LnkAbout.Location = new Point(10, 314);
             this.LnkAbout.Name = "LnkAbout";
             this.LnkAbout.Size = new Size(80, 13);
             this.LnkAbout.TabIndex = 4;

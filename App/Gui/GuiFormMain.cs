@@ -1070,6 +1070,8 @@ namespace OmenMon.AppGui {
                 Config.SysInfoRtfHeader
                 + Conv.GetUnicodeStringRtf(this.SysInfo)
                 + Conv.GetUnicodeStringRtf(this.SysStatus)
+                + Conv.RTF_LINE
+                + Conv.RTF_CF1 + "v" + Config.AppVersion
                 + Config.SysInfoRtfFooter;
         }
 

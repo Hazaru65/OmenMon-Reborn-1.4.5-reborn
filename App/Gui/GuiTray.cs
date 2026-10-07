@@ -393,8 +393,9 @@ namespace OmenMon.AppGui {
                 && (this.FormMain.IsAutoMode || this.FormMain.IsConstMode)) {
                 if(this.UpdateGpuPowerForceTick++ == 0) {
                     try {
-                        if(this.Op.Platform.System.GetGpuCustomTgp() != BiosData.GpuCustomTgp.On
-                            || this.Op.Platform.System.GetGpuPpab() != BiosData.GpuPpab.On)
+                        BiosData.GpuPowerData gpuPower = this.Op.Platform.System.GetGpuPower(true);
+                        if(gpuPower.CustomTgp != BiosData.GpuCustomTgp.On
+                            || gpuPower.Ppab != BiosData.GpuPpab.On)
                             this.Op.Platform.System.SetGpuPower(
                                 new BiosData.GpuPowerData(BiosData.GpuPowerLevel.Maximum));
                     } catch { }
