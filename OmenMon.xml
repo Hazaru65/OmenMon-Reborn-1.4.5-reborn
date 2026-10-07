@@ -198,7 +198,7 @@
                  fan levels; never touches the fan mode or GPU power. -->
             <Program Name="Auto">
                 <FanMode>Default</FanMode>
-                <GpuPower>Minimum</GpuPower>
+                <GpuPower>Maximum</GpuPower>
                 <LevelOnly>true</LevelOnly>
                 <Level Temperature="00"><Cpu>21</Cpu><Gpu>00</Gpu></Level>
                 <Level Temperature="40"><Cpu>23</Cpu><Gpu>00</Gpu></Level>

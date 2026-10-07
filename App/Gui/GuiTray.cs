@@ -53,6 +53,7 @@ namespace OmenMon.AppGui {
         internal int UpdateMonitorTick;
         internal int UpdateProgramTick;
         internal int UpdateFanConstReapplyTick;
+        private int UpdateGpuPowerForceTick;
 #endregion
 
 #region Construction & Disposal
@@ -332,6 +333,8 @@ namespace OmenMon.AppGui {
                 this.UpdateProgramTick = 0;
             if(this.UpdateFanConstReapplyTick >= Config.FanConstReapplyInterval)
                 this.UpdateFanConstReapplyTick = 0;
+            if(this.UpdateGpuPowerForceTick >= Config.FanConstReapplyInterval)
+                this.UpdateGpuPowerForceTick = 0;
 
             // Update the fan program or extend the countdown
             if(this.UpdateProgramTick++ == 0) {
@@ -381,6 +384,23 @@ namespace OmenMon.AppGui {
                 }
             } else {
                 this.UpdateFanConstReapplyTick = 0;
+            }
+
+            // Force the GPU power preset while the Auto or Const fan mode is selected:
+            // neither of those code paths touches GPU power, so a firmware-side revert
+            // of the preset would otherwise go uncorrected
+            if(this.FormMain != null
+                && (this.FormMain.IsAutoMode || this.FormMain.IsConstMode)) {
+                if(this.UpdateGpuPowerForceTick++ == 0) {
+                    try {
+                        if(this.Op.Platform.System.GetGpuCustomTgp() != BiosData.GpuCustomTgp.On
+                            || this.Op.Platform.System.GetGpuPpab() != BiosData.GpuPpab.On)
+                            this.Op.Platform.System.SetGpuPower(
+                                new BiosData.GpuPowerData(BiosData.GpuPowerLevel.Maximum));
+                    } catch { }
+                }
+            } else {
+                this.UpdateGpuPowerForceTick = 0;
             }
 
             // Update the notification icon and tray tooltip

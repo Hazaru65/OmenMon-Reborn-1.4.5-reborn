@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Auto and Constant fan modes never enforced the GPU power preset.** Both paths deliberately leave GPU power alone — the `Auto` fan program is `LevelOnly`, and the Constant re-apply block writes only fan levels — so once firmware reverted the preset to `CustomTgp=Off` (observed on a Victus 16 8BD4 whose hall-effect sensor daughterboard was unplugged) the GPU stayed pinned to its ~90 W fallback ceiling with nothing to correct it. While the fan mode selector is on **Auto** or **Const**, OmenMon now re-asserts the `Maximum` GPU power preset on the existing `FanConstReapply` cadence, writing only when the current preset differs, so the redundant WMI write is avoided. The `Auto` fan program's own `GpuPower` value in `OmenMon.xml` is corrected from `Minimum` to `Maximum` for consistency. `Silent` and `Power` program behaviour, and all fan mode/level behaviour, are unchanged.
+
 ## [1.4.5-reborn] - 2026-08-03
 
 ### Fixed

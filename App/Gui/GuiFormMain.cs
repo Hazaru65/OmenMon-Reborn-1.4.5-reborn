@@ -1114,6 +1114,7 @@ namespace OmenMon.AppGui {
 
         // Properties and methods exposed for the constant speed re-apply feature
         public bool IsConstMode => this.RdoFanConst.Checked;
+        public bool IsAutoMode => this.RdoFanAuto.Checked;
 
         public byte[] GetConstLevels() {
             return new byte[] {
